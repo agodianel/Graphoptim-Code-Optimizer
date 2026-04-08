@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# GraphOptim outputs
+benchmark_results/
+benchmark_dataset.json
+benchmark_results.json
+statistical_report.csv
+benchmark_report.md
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv
+uv.lock
