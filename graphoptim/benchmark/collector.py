@@ -59,8 +59,10 @@ class DatasetCollector:
 
     def collect(self) -> list[BenchmarkProblem]:
         """
-        Full pipeline: load dataset → filter to clean single-function
-        problems → select N samples → generate LLM solutions.
+        Full pipeline: load dataset → filter → select N → generate LLM solutions.
+
+        For 'realworld' dataset, no filtering is applied (prompts are curated).
+        For 'humaneval'/'mbpp', filters to clean single-function problems.
 
         Returns:
             List of BenchmarkProblem objects with all solutions.
@@ -68,14 +70,22 @@ class DatasetCollector:
         # Step 1: Load raw dataset
         if self.config.dataset == "humaneval":
             raw_problems = self._load_humaneval()
-        else:
+        elif self.config.dataset == "mbpp":
             raw_problems = self._load_mbpp()
+        elif self.config.dataset == "realworld":
+            raw_problems = self._load_realworld()
+        else:
+            print(f"  ⚠ Unknown dataset: {self.config.dataset}")
+            return []
 
-        print(f"  Loaded {len(raw_problems)} raw problems from {self.config.dataset}")
+        print(f"  Loaded {len(raw_problems)} problems from {self.config.dataset}")
 
-        # Step 2: Filter to clean, single-function problems
-        clean_problems = self._filter_single_function(raw_problems)
-        print(f"  Filtered to {len(clean_problems)} clean single-function problems")
+        # Step 2: Filter (skip for realworld — prompts are curated)
+        if self.config.dataset in ("humaneval", "mbpp"):
+            clean_problems = self._filter_single_function(raw_problems)
+            print(f"  Filtered to {len(clean_problems)} clean single-function problems")
+        else:
+            clean_problems = raw_problems
 
         # Step 3: Select N samples
         problems = clean_problems[: self.config.n_samples]
@@ -92,14 +102,23 @@ class DatasetCollector:
         for i, problem in enumerate(problems):
             for model in available_models:
                 try:
-                    solution = self._generate_solution(model, problem.prompt)
+                    if self.config.dataset == "realworld":
+                        # For real-world: use the prompt directly (it's already
+                        # a complete task description, no wrapping needed)
+                        solution = self._generate_solution_raw(
+                            model, problem.prompt
+                        )
+                    else:
+                        solution = self._generate_solution(
+                            model, problem.prompt
+                        )
                     problem.llm_solutions[model] = solution
                     time.sleep(0.5)  # Rate limiting
                 except Exception as e:
                     print(f"    ⚠ {model} failed on {problem.task_id}: {e}")
                     problem.llm_solutions[model] = f"# Error: {e}"
 
-            if (i + 1) % 10 == 0:
+            if (i + 1) % 5 == 0:
                 print(f"    Progress: {i + 1}/{len(problems)} problems")
 
         return problems
@@ -243,8 +262,37 @@ class DatasetCollector:
 
         return problems
 
+    def _load_realworld(self) -> list[BenchmarkProblem]:
+        """
+        Load the curated real-world benchmark prompts.
+
+        These are complex, multi-function tasks designed to trigger
+        structural inefficiencies in LLM-generated code.
+        """
+        prompts_path = (
+            Path(__file__).resolve().parent / "prompts" / "realworld.json"
+        )
+        if not prompts_path.exists():
+            print(f"  ⚠ Real-world prompts not found at {prompts_path}")
+            return []
+
+        with open(prompts_path, encoding="utf-8") as f:
+            prompts_data = json.load(f)
+
+        problems = []
+        for item in prompts_data:
+            problems.append(
+                BenchmarkProblem(
+                    task_id=item["task_id"],
+                    prompt=item["prompt"],
+                    canonical_solution="",  # No human reference for real-world
+                    test="",
+                )
+            )
+        return problems
+
     def _generate_solution(self, model: str, prompt: str) -> str:
-        """Generate a solution using the specified LLM."""
+        """Generate a solution using the specified LLM (HumanEval/MBPP)."""
         full_prompt = SOLUTION_PROMPT.format(problem_description=prompt)
 
         if model == "claude":
@@ -256,7 +304,25 @@ class DatasetCollector:
         else:
             raise ValueError(f"Unknown model: {model}")
 
-    def _call_claude(self, prompt: str) -> str:
+    def _generate_solution_raw(self, model: str, prompt: str) -> str:
+        """Generate a solution for real-world tasks (multi-function)."""
+        full_prompt = (
+            "Write a complete Python module that implements the following. "
+            "Return only valid Python code, no explanations or markdown. "
+            "Include all necessary imports, classes, and functions.\n\n"
+            f"{prompt}"
+        )
+
+        if model == "claude":
+            return self._call_claude(full_prompt, max_tokens=4096)
+        elif model == "gpt4o":
+            return self._call_gpt4o(full_prompt, max_tokens=4096)
+        elif model == "gemini":
+            return self._call_gemini(full_prompt)
+        else:
+            raise ValueError(f"Unknown model: {model}")
+
+    def _call_claude(self, prompt: str, max_tokens: int = 2048) -> str:
         """Call Claude Opus 4.6 API."""
         if self._anthropic_client is None:
             import anthropic
@@ -267,13 +333,13 @@ class DatasetCollector:
 
         message = self._anthropic_client.messages.create(
             model="claude-opus-4-6",
-            max_tokens=2048,
+            max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
         return message.content[0].text
 
-    def _call_gpt4o(self, prompt: str) -> str:
-        """Call GPT-5.2 API."""
+    def _call_gpt4o(self, prompt: str, max_tokens: int = 2048) -> str:
+        """Call OpenAI GPT API."""
         if self._openai_client is None:
             import openai
 
@@ -282,21 +348,25 @@ class DatasetCollector:
             )
 
         response = self._openai_client.chat.completions.create(
-            model="gpt-5.2",
+            model="gpt-4.1",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=2048,
+            max_completion_tokens=max_tokens,
         )
         return response.choices[0].message.content
 
     def _call_gemini(self, prompt: str) -> str:
-        """Call Gemini 2.5 Pro API."""
+        """Call Gemini API."""
         if self._google_model is None:
-            import google.generativeai as genai
+            from google import genai
 
-            genai.configure(api_key=self.config.google_api_key)
-            self._google_model = genai.GenerativeModel("gemini-2.5-pro")
+            self._google_model = genai.Client(
+                api_key=self.config.google_api_key
+            )
 
-        response = self._google_model.generate_content(prompt)
+        response = self._google_model.models.generate_content(
+            model="gemini-2.5-pro",
+            contents=prompt,
+        )
         return response.text
 
     def save_dataset(

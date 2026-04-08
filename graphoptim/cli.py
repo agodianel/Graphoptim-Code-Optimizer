@@ -386,9 +386,9 @@ def optimize(
 )
 @click.option(
     "--dataset",
-    type=click.Choice(["humaneval", "mbpp"]),
+    type=click.Choice(["humaneval", "mbpp", "realworld"]),
     default="humaneval",
-    help="Benchmark dataset",
+    help="Benchmark dataset (realworld = complex multi-function tasks)",
 )
 @click.option(
     "--output-dir",

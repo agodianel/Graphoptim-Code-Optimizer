@@ -18,16 +18,10 @@ venv/
 *.swo
 
 # GraphOptim outputs
-benchmark_results/
-benchmark_dataset.json
-benchmark_results.json
-statistical_report.csv
-benchmark_report.md
-raw_data.json
+
 *.bak
 
 # Downloaded datasets
-data/
 
 # OS
 .DS_Store

@@ -1,0 +1,142 @@
+[
+  {
+    "task_id": "RW/001",
+    "category": "data_processing",
+    "prompt": "Write a Python module with multiple functions that reads data from CSV, JSON, and XML files. Include functions for: (1) detecting file format automatically, (2) parsing each format with proper error handling for malformed data, (3) converting between formats, and (4) validating the parsed data against a schema dictionary. Handle edge cases like empty files, missing columns, encoding issues, and nested JSON structures. Include a main orchestrator function that ties everything together.",
+    "expected_patterns": ["dead_code", "redundant_paths", "deep_chains"],
+    "min_expected_functions": 5
+  },
+  {
+    "task_id": "RW/002",
+    "category": "authentication",
+    "prompt": "Write a Python module implementing a complete user authentication system. Include functions for: (1) user registration with password hashing and validation, (2) login with brute-force protection and account lockout, (3) password reset with token generation and expiry, (4) session management with creation, validation, and cleanup, (5) role-based access control with permission checking, and (6) audit logging of all auth events. Use only standard library modules. Handle all error cases explicitly.",
+    "expected_patterns": ["bottleneck", "deep_chains", "redundant_paths"],
+    "min_expected_functions": 6
+  },
+  {
+    "task_id": "RW/003",
+    "category": "caching",
+    "prompt": "Write a Python module implementing a full-featured caching system. Include: (1) an LRU cache with configurable max size, (2) TTL-based expiration with lazy and active cleanup strategies, (3) cache statistics tracking (hits, misses, evictions, hit rate), (4) a decorator for memoizing function calls with cache, (5) serialization support so the cache can be saved to and loaded from disk, and (6) a cache invalidation system with pattern-based key matching. Handle thread safety with locks. Include error handling for all edge cases.",
+    "expected_patterns": ["dead_code", "bottleneck", "deep_chains"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/004",
+    "category": "cli_tool",
+    "prompt": "Write a Python module for a log file analyzer CLI tool. Include functions for: (1) parsing multiple log formats (syslog, Apache, nginx, JSON logs), (2) filtering log entries by severity level, date range, and regex pattern, (3) aggregating statistics (error counts by type, requests per minute, top IP addresses), (4) detecting anomalies like sudden error spikes or unusual patterns, (5) generating summary reports in text and JSON formats, and (6) a main function that orchestrates everything with argument parsing. Handle large files efficiently with streaming. Include proper error handling throughout.",
+    "expected_patterns": ["redundant_paths", "bottleneck", "deep_chains"],
+    "min_expected_functions": 7
+  },
+  {
+    "task_id": "RW/005",
+    "category": "data_pipeline",
+    "prompt": "Write a Python module implementing a data transformation pipeline. Include: (1) a Pipeline class that chains transformation steps, (2) built-in transforms for filtering, mapping, grouping, and aggregation, (3) error recovery with configurable strategies (skip, retry, abort, default value), (4) validation at each pipeline stage with custom validators, (5) progress tracking and logging, (6) support for branching pipelines where data flows to multiple outputs, and (7) a results collector that merges outputs. Handle empty datasets, type mismatches, and transformation errors gracefully.",
+    "expected_patterns": ["dead_code", "redundant_paths", "bottleneck"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/006",
+    "category": "state_machine",
+    "prompt": "Write a Python module implementing a finite state machine framework. Include: (1) a StateMachine class with states, transitions, and guards, (2) support for entry/exit actions on states, (3) transition conditions and side effects, (4) event handling with priority queues, (5) state history and undo support, (6) serialization and deserialization of machine state, (7) validation that the machine definition is complete and deterministic, and (8) a visualization method that outputs a DOT graph of the machine. Handle invalid transitions, missing states, and circular dependencies. Include comprehensive error handling.",
+    "expected_patterns": ["deep_chains", "bottleneck", "dead_code"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/007",
+    "category": "http_client",
+    "prompt": "Write a Python HTTP client module using only the standard library (urllib). Include: (1) GET, POST, PUT, DELETE methods with proper headers, (2) automatic retry with exponential backoff and jitter, (3) connection pooling simulation with request reuse, (4) response caching with ETags and If-Modified-Since, (5) rate limiting with token bucket algorithm, (6) request/response logging and metrics collection, (7) timeout handling with configurable connect and read timeouts, and (8) cookie jar management. Handle all HTTP error codes explicitly with different strategies for 4xx vs 5xx errors.",
+    "expected_patterns": ["deep_chains", "redundant_paths", "dead_code"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/008",
+    "category": "task_scheduler",
+    "prompt": "Write a Python module implementing a task scheduler. Include: (1) a Task class with dependencies, priority, and timeout, (2) a Scheduler that resolves dependency graphs using topological sort, (3) parallel execution simulation with a thread pool, (4) retry logic with configurable max attempts and backoff, (5) dead task detection and cleanup, (6) scheduling strategies (FIFO, priority, shortest-job-first), (7) progress reporting and ETA estimation, and (8) graceful shutdown with task state preservation. Handle circular dependencies, missing dependencies, and task failures.",
+    "expected_patterns": ["bottleneck", "dead_code", "deep_chains"],
+    "min_expected_functions": 7
+  },
+  {
+    "task_id": "RW/009",
+    "category": "text_processing",
+    "prompt": "Write a Python module for advanced text processing and analysis. Include: (1) tokenization with multiple strategies (word, sentence, regex-based), (2) text normalization (lowercasing, unicode normalization, whitespace cleanup, stemming), (3) n-gram extraction with frequency counting, (4) text similarity using Jaccard, cosine, and Levenshtein distance, (5) keyword extraction using TF-IDF, (6) text summarization by extracting top-scoring sentences, (7) language detection heuristics, and (8) a pipeline function that chains multiple processing steps. Handle empty inputs, mixed encodings, and very long texts.",
+    "expected_patterns": ["redundant_paths", "deep_chains", "dead_code"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/010",
+    "category": "database",
+    "prompt": "Write a Python module implementing an in-memory database with SQL-like operations. Include: (1) a Table class with typed columns and constraints, (2) INSERT with validation and auto-increment, (3) SELECT with WHERE clauses supporting comparison operators and AND/OR, (4) UPDATE and DELETE with WHERE conditions, (5) JOIN operations (inner, left, right), (6) GROUP BY with aggregate functions (COUNT, SUM, AVG, MIN, MAX), (7) ORDER BY with multi-column sorting, (8) index creation for faster lookups, and (9) transaction support with commit and rollback. Handle type mismatches, constraint violations, and missing columns.",
+    "expected_patterns": ["deep_chains", "bottleneck", "redundant_paths"],
+    "min_expected_functions": 10
+  },
+  {
+    "task_id": "RW/011",
+    "category": "config_management",
+    "prompt": "Write a Python module for hierarchical configuration management. Include: (1) loading from multiple sources (TOML, JSON, YAML-like, environment variables, CLI args), (2) merging configs with priority ordering, (3) validation against a schema with type checking, required fields, and default values, (4) environment-specific overrides (dev, staging, production), (5) secret detection and masking in logs, (6) hot-reload support with file watching, (7) configuration diffing between two configs, and (8) export to different formats. Handle missing files, parse errors, circular references in includes, and type coercion.",
+    "expected_patterns": ["redundant_paths", "dead_code", "deep_chains"],
+    "min_expected_functions": 7
+  },
+  {
+    "task_id": "RW/012",
+    "category": "middleware",
+    "prompt": "Write a Python module implementing a middleware pipeline for request processing. Include: (1) a Middleware base class with before/after hooks, (2) logging middleware that records request/response details, (3) authentication middleware that validates tokens, (4) rate limiting middleware with sliding window, (5) CORS middleware with configurable origins, (6) compression middleware for response bodies, (7) error handling middleware with custom error responses, (8) request validation middleware with JSON schema, and (9) a Pipeline class that chains middleware in order. Handle middleware failures, short-circuiting, and cleanup on errors.",
+    "expected_patterns": ["bottleneck", "deep_chains", "redundant_paths"],
+    "min_expected_functions": 9
+  },
+  {
+    "task_id": "RW/013",
+    "category": "event_system",
+    "prompt": "Write a Python module implementing a complete event-driven system. Include: (1) an EventBus with subscribe, unsubscribe, and publish, (2) support for synchronous and asynchronous event handlers, (3) event filtering with pattern matching on event types, (4) event priority and ordering guarantees, (5) dead letter queue for failed event handlers, (6) event replay from a persistent event store, (7) event sourcing with state reconstruction, (8) middleware support for cross-cutting concerns (logging, timing), and (9) circuit breaker pattern for failing handlers. Handle handler exceptions, duplicate subscriptions, and memory leaks from forgotten subscriptions.",
+    "expected_patterns": ["bottleneck", "dead_code", "deep_chains"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/014",
+    "category": "testing",
+    "prompt": "Write a Python module implementing a lightweight test framework. Include: (1) test discovery by scanning files and classes, (2) assertion methods (assertEqual, assertTrue, assertRaises, assertAlmostEqual, etc.), (3) test fixtures with setUp and tearDown, (4) parametrized test support with multiple input sets, (5) test tagging and filtering (skip, expected failure, slow), (6) result collection with pass/fail/error/skip counts, (7) output formatters (text, JUnit XML, JSON), (8) timing of individual tests and the full suite, and (9) a test runner that orchestrates everything. Handle test isolation, import errors, and timeout enforcement.",
+    "expected_patterns": ["deep_chains", "redundant_paths", "bottleneck"],
+    "min_expected_functions": 10
+  },
+  {
+    "task_id": "RW/015",
+    "category": "file_system",
+    "prompt": "Write a Python module for advanced file system operations. Include: (1) recursive directory traversal with include/exclude glob patterns, (2) file deduplication using content hashing (MD5, SHA256), (3) directory synchronization (one-way and two-way) similar to rsync, (4) file watching for changes with polling and debouncing, (5) safe atomic file writes with temp files and rename, (6) disk usage analysis with top-N largest files and directory sizes, (7) file locking for concurrent access, and (8) batch file operations (rename, move, copy) with dry-run preview and undo support. Handle permission errors, symlinks, and cross-platform path differences.",
+    "expected_patterns": ["dead_code", "deep_chains", "redundant_paths"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/016",
+    "category": "validation",
+    "prompt": "Write a Python module implementing a comprehensive data validation library. Include: (1) type validators (string, int, float, bool, list, dict, datetime), (2) constraint validators (min, max, pattern, enum, length), (3) nested object validation with recursive schema, (4) custom validator registration and composition (AND, OR, NOT), (5) detailed error reporting with paths to invalid fields, (6) coercion mode that attempts to fix data before validation, (7) conditional validation (field A required only if field B is present), and (8) a schema builder DSL. Handle circular references, None values, and mixed types in collections.",
+    "expected_patterns": ["redundant_paths", "deep_chains", "dead_code"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/017",
+    "category": "retry_resilience",
+    "prompt": "Write a Python module implementing resilience patterns. Include: (1) retry with configurable strategies (fixed, exponential, fibonacci backoff), (2) circuit breaker with half-open state and configurable thresholds, (3) bulkhead pattern limiting concurrent operations, (4) timeout wrapper with configurable durations, (5) fallback chains trying alternatives on failure, (6) health check system aggregating component statuses, (7) metrics collection for all patterns (success rate, latency, failure types), and (8) a decorator API for applying patterns to any function. Handle nested retries, cascading failures, and thread safety.",
+    "expected_patterns": ["deep_chains", "dead_code", "bottleneck"],
+    "min_expected_functions": 7
+  },
+  {
+    "task_id": "RW/018",
+    "category": "template_engine",
+    "prompt": "Write a Python module implementing a simple template engine. Include: (1) variable interpolation with {{ variable }} syntax, (2) conditional blocks with {% if/elif/else/endif %}, (3) loop blocks with {% for item in items %}, (4) template inheritance with {% extends %} and {% block %}, (5) include support with {% include %}, (6) custom filter support with {{ variable|filter }}, (7) auto-escaping for HTML output, (8) template caching and compilation, and (9) detailed error messages with line numbers for template syntax errors. Handle undefined variables, infinite loops in includes, and nested blocks.",
+    "expected_patterns": ["deep_chains", "redundant_paths", "bottleneck"],
+    "min_expected_functions": 8
+  },
+  {
+    "task_id": "RW/019",
+    "category": "graph_algorithms",
+    "prompt": "Write a Python module implementing a graph library. Include: (1) Graph and DiGraph classes with adjacency list representation, (2) add/remove nodes and edges with weight support, (3) BFS and DFS traversal with visitor callbacks, (4) shortest path algorithms (Dijkstra, Bellman-Ford), (5) minimum spanning tree (Prim's and Kruskal's), (6) topological sort with cycle detection, (7) connected components and strongly connected components, (8) graph serialization to/from adjacency matrix and edge list formats, and (9) a visualization method outputting DOT format. Handle disconnected graphs, negative weights, and self-loops.",
+    "expected_patterns": ["redundant_paths", "deep_chains", "dead_code"],
+    "min_expected_functions": 10
+  },
+  {
+    "task_id": "RW/020",
+    "category": "plugin_system",
+    "prompt": "Write a Python module implementing a plugin system framework. Include: (1) plugin discovery from a directory of Python files, (2) a Plugin base class with lifecycle hooks (init, start, stop, destroy), (3) dependency injection between plugins, (4) configuration per plugin with validation, (5) plugin versioning and compatibility checking, (6) hot reload of plugins without restarting, (7) sandboxing with restricted import capabilities, (8) inter-plugin communication via events, and (9) a PluginManager that orchestrates loading, dependency resolution, and lifecycle. Handle missing dependencies, circular plugin dependencies, plugin crashes, and version conflicts.",
+    "expected_patterns": ["bottleneck", "deep_chains", "dead_code"],
+    "min_expected_functions": 8
+  }
+]

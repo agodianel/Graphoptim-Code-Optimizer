@@ -29,25 +29,67 @@ class BenchmarkResults:
     raw_data: list[dict] = field(default_factory=list)
 
     def save(self, output_dir: str) -> None:
-        """Save results to the output directory."""
+        """Save results to the output directory with per-model subfolders."""
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
 
-        # Raw metrics
-        self.metrics_df.to_json(
-            out / "benchmark_results.json", orient="records", indent=2
-        )
+        # --- Per-model subfolders ---
+        if "source" in self.metrics_df.columns:
+            models = [
+                s for s in self.metrics_df["source"].unique() if s != "human"
+            ]
+            for model in models:
+                model_dir = out / model
+                model_dir.mkdir(parents=True, exist_ok=True)
 
-        # Statistical report
+                # Model-specific metrics
+                model_df = self.metrics_df[
+                    self.metrics_df["source"].isin([model, "human"])
+                ]
+                model_df.to_json(
+                    model_dir / "metrics.json", orient="records", indent=2
+                )
+
+                # Model-specific raw data
+                model_raw = [
+                    r for r in self.raw_data
+                    if r.get("source") in (model, "human")
+                ]
+                with open(model_dir / "raw_data.json", "w", encoding="utf-8") as f:
+                    json.dump(model_raw, f, indent=2)
+
+                # Model-specific statistical report
+                if not self.statistical_df.empty:
+                    model_stats = self.statistical_df[
+                        self.statistical_df["model"] == model
+                    ]
+                    model_stats.to_csv(
+                        model_dir / "statistical_report.csv", index=False
+                    )
+
+                # Model-specific markdown report
+                model_report = self._generate_model_report(model)
+                (model_dir / "report.md").write_text(
+                    model_report, encoding="utf-8"
+                )
+
+            # Save human-only metrics in a human/ subfolder
+            human_dir = out / "human"
+            human_dir.mkdir(parents=True, exist_ok=True)
+            human_df = self.metrics_df[self.metrics_df["source"] == "human"]
+            human_df.to_json(
+                human_dir / "metrics.json", orient="records", indent=2
+            )
+
+        # --- Top-level aggregate files ---
+        self.metrics_df.to_json(
+            out / "all_metrics.json", orient="records", indent=2
+        )
         self.statistical_df.to_csv(
             out / "statistical_report.csv", index=False
         )
-
-        # Human-readable report
         report_md = self._generate_report()
         (out / "benchmark_report.md").write_text(report_md, encoding="utf-8")
-
-        # Raw data
         with open(out / "raw_data.json", "w", encoding="utf-8") as f:
             json.dump(self.raw_data, f, indent=2)
 
@@ -114,6 +156,78 @@ class BenchmarkResults:
 
         return "\n".join(lines)
 
+    def _generate_model_report(self, model: str) -> str:
+        """Generate a report for a specific model vs human."""
+        model_df = self.metrics_df[self.metrics_df["source"] == model]
+        human_df = self.metrics_df[self.metrics_df["source"] == "human"]
+
+        model_names = {
+            "claude": "Claude Opus 4.6",
+            "gpt4o": "GPT-5.2",
+            "gemini": "Gemini 3.1 Pro",
+        }
+        display_name = model_names.get(model, model)
+
+        lines = [
+            f"# {display_name} vs Human — Benchmark Report",
+            "",
+            "## Summary",
+            "",
+            f"- **Model**: {display_name}",
+            f"- **LLM functions analyzed**: {len(model_df)}",
+            f"- **Human functions analyzed**: {len(human_df)}",
+            "",
+        ]
+
+        # Metric comparison table
+        metrics = [
+            "cyclomatic_complexity", "dead_nodes_count", "lines_of_code",
+            "cfg_diameter", "max_betweenness_centrality", "node_edge_ratio",
+        ]
+        available = [m for m in metrics if m in self.metrics_df.columns]
+
+        if available:
+            lines.extend([
+                "## Metric Comparison",
+                "",
+                "| Metric | Human (median) | LLM (median) | Δ |",
+                "|--------|---------------|-------------|---|",
+            ])
+            for metric in available:
+                h_med = human_df[metric].median() if metric in human_df else 0
+                l_med = model_df[metric].median() if metric in model_df else 0
+                delta = l_med - h_med
+                arrow = "↑" if delta > 0 else "↓" if delta < 0 else "="
+                lines.append(
+                    f"| {metric} | {h_med:.2f} | {l_med:.2f} | {arrow} {abs(delta):.2f} |"
+                )
+
+        # Statistical tests for this model
+        if not self.statistical_df.empty:
+            model_stats = self.statistical_df[
+                self.statistical_df["model"] == model
+            ]
+            if not model_stats.empty:
+                lines.extend([
+                    "",
+                    "## Statistical Tests (Mann-Whitney U)",
+                    "",
+                    "| Metric | p-value | Significant |",
+                    "|--------|---------|-------------|",
+                ])
+                for _, row in model_stats.iterrows():
+                    sig = "✓ Yes" if row["significant"] else "No"
+                    lines.append(
+                        f"| {row['metric']} | {row['p_value']:.4f} | {sig} |"
+                    )
+
+        lines.extend([
+            "",
+            "---",
+            f"*Generated by GraphOptim benchmark pipeline*",
+        ])
+        return "\n".join(lines)
+
 
 class BenchmarkRunner:
     """
@@ -140,15 +254,33 @@ class BenchmarkRunner:
         collector.save_dataset(problems, str(out_dir / "benchmark_dataset.json"))
 
         # Step 2: Extract metrics
+        if self.config.dataset == "realworld":
+            all_metrics = self._extract_realworld_metrics(problems)
+        else:
+            all_metrics = self._extract_humaneval_metrics(problems)
+
+        metrics_df = pd.DataFrame(all_metrics)
+
+        # Step 3: Statistical tests
+        statistical_df = self._run_statistical_tests(metrics_df)
+
+        return BenchmarkResults(
+            metrics_df=metrics_df,
+            statistical_df=statistical_df,
+            raw_data=all_metrics,
+        )
+
+    def _extract_humaneval_metrics(
+        self, problems: list[BenchmarkProblem]
+    ) -> list[dict]:
+        """Extract metrics for HumanEval/MBPP (human vs LLM comparison)."""
         print(f"\n  Extracting metrics from {len(problems)} problems...")
         all_metrics = []
         for i, problem in enumerate(problems):
             # Human solution — combine prompt + canonical for HumanEval
-            # (canonical_solution is just the body in HumanEval)
             human_source = problem.prompt + problem.canonical_solution
             human_metrics = self._safe_extract(human_source, problem.task_id)
             if human_metrics is None:
-                # Fallback: try canonical alone (MBPP stores full code)
                 human_metrics = self._safe_extract(
                     problem.canonical_solution, problem.task_id
                 )
@@ -168,16 +300,97 @@ class BenchmarkRunner:
             if (i + 1) % 25 == 0:
                 print(f"    Metrics progress: {i + 1}/{len(problems)}")
 
-        metrics_df = pd.DataFrame(all_metrics)
+        return all_metrics
 
-        # Step 3: Statistical tests
-        statistical_df = self._run_statistical_tests(metrics_df)
+    def _extract_realworld_metrics(
+        self, problems: list[BenchmarkProblem]
+    ) -> list[dict]:
+        """
+        Extract metrics for real-world benchmark (multi-function).
 
-        return BenchmarkResults(
-            metrics_df=metrics_df,
-            statistical_df=statistical_df,
-            raw_data=all_metrics,
-        )
+        For each LLM solution:
+        1. Extract per-function CFG metrics
+        2. Run GraphOptim analyze for patterns and scoring
+        3. Run GraphOptim optimize to measure improvement
+        """
+        import graphoptim as go
+
+        print(f"\n  Extracting real-world metrics from {len(problems)} problems...")
+        all_metrics = []
+
+        for i, problem in enumerate(problems):
+            for model, solution in problem.llm_solutions.items():
+                if solution.startswith("# Error"):
+                    continue
+
+                clean = self._clean_source(solution)
+
+                # Run full GraphOptim analysis
+                try:
+                    report = go.analyze(clean)
+                    optimized = go.optimize(clean)
+
+                    # Before/after scores
+                    after_report = go.analyze(optimized)
+
+                    entry = {
+                        "task_id": problem.task_id,
+                        "source": model,
+                        "num_functions": len(report.functions),
+                        "total_score_before": report.total_score,
+                        "total_score_after": after_report.total_score,
+                        "score_improvement": (
+                            after_report.total_score - report.total_score
+                        ),
+                        "lines_of_code": len(clean.splitlines()),
+                        "lines_after_optimize": len(optimized.splitlines()),
+                        "lines_removed": (
+                            len(clean.splitlines()) - len(optimized.splitlines())
+                        ),
+                    }
+
+                    # Aggregate per-function metrics
+                    total_cc = 0
+                    total_dead = 0
+                    total_bottlenecks = 0
+                    total_deep_chains = 0
+                    total_redundant = 0
+
+                    for func in report.functions:
+                        total_cc += func.metrics.cyclomatic_complexity
+                        total_dead += len(func.dead_nodes) if func.dead_nodes else 0
+                        total_bottlenecks += (
+                            len(func.bottlenecks) if func.bottlenecks else 0
+                        )
+                        total_deep_chains += (
+                            len(func.deep_chains) if func.deep_chains else 0
+                        )
+                        total_redundant += (
+                            len(func.redundant_paths)
+                            if func.redundant_paths else 0
+                        )
+
+                    entry["avg_cyclomatic_complexity"] = (
+                        total_cc / max(len(report.functions), 1)
+                    )
+                    entry["total_dead_nodes"] = total_dead
+                    entry["total_bottlenecks"] = total_bottlenecks
+                    entry["total_deep_chains"] = total_deep_chains
+                    entry["total_redundant_paths"] = total_redundant
+                    entry["patterns_found"] = (
+                        total_dead + total_bottlenecks
+                        + total_deep_chains + total_redundant
+                    )
+
+                    all_metrics.append(entry)
+
+                except Exception as e:
+                    print(f"    ⚠ Analysis failed for {model}/{problem.task_id}: {e}")
+
+            if (i + 1) % 5 == 0:
+                print(f"    Progress: {i + 1}/{len(problems)}")
+
+        return all_metrics
 
     def _safe_extract(self, source_code: str, task_id: str) -> dict | None:
         """Safely extract metrics from source code."""

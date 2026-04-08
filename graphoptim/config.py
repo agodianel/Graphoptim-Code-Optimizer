@@ -47,7 +47,9 @@ class BenchmarkConfig:
         default_factory=lambda: os.environ.get("OPENAI_API_KEY", "")
     )
     google_api_key: str = field(
-        default_factory=lambda: os.environ.get("GOOGLE_API_KEY", "")
+        default_factory=lambda: os.environ.get(
+            "GOOGLE_API_KEY", os.environ.get("GEMINI_API_KEY", "")
+        )
     )
 
     n_samples: int = 100

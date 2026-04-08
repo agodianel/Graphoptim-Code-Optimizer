@@ -1,0 +1,6 @@
+metric,model,human_median,llm_median,u_statistic,p_value,significant
+cyclomatic_complexity,gpt4o,3.0,3.0,5106.5,0.7913862418411326,False
+dead_nodes_count,gpt4o,0.0,0.0,5000.0,1.0,False
+cfg_diameter,gpt4o,1.0,1.0,5000.0,1.0,False
+max_betweenness_centrality,gpt4o,0.0,0.0,5000.0,1.0,False
+lines_of_code,gpt4o,15.5,6.0,8967.5,2.5891233772063707e-22,True
