@@ -140,12 +140,18 @@ class BenchmarkRunner:
         collector.save_dataset(problems, str(out_dir / "benchmark_dataset.json"))
 
         # Step 2: Extract metrics
+        print(f"\n  Extracting metrics from {len(problems)} problems...")
         all_metrics = []
-        for problem in problems:
-            # Human solution
-            human_metrics = self._safe_extract(
-                problem.canonical_solution, problem.task_id
-            )
+        for i, problem in enumerate(problems):
+            # Human solution — combine prompt + canonical for HumanEval
+            # (canonical_solution is just the body in HumanEval)
+            human_source = problem.prompt + problem.canonical_solution
+            human_metrics = self._safe_extract(human_source, problem.task_id)
+            if human_metrics is None:
+                # Fallback: try canonical alone (MBPP stores full code)
+                human_metrics = self._safe_extract(
+                    problem.canonical_solution, problem.task_id
+                )
             if human_metrics:
                 human_metrics["source"] = "human"
                 human_metrics["task_id"] = problem.task_id
@@ -158,6 +164,9 @@ class BenchmarkRunner:
                     llm_metrics["source"] = model
                     llm_metrics["task_id"] = problem.task_id
                     all_metrics.append(llm_metrics)
+
+            if (i + 1) % 25 == 0:
+                print(f"    Metrics progress: {i + 1}/{len(problems)}")
 
         metrics_df = pd.DataFrame(all_metrics)
 

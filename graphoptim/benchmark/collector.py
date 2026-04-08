@@ -3,26 +3,33 @@ Benchmark dataset collector for GraphOptim.
 
 Downloads HumanEval and MBPP datasets and generates LLM solutions
 using Claude Opus 4.6, GPT-5.2, and Gemini 2.5 Pro APIs.
+
+API keys are loaded from environment variables:
+    ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY
 """
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 from graphoptim.config import BenchmarkConfig
 
 
-# Standard prompt for all models
+# Standard prompt for all models — identical as spec requires
 SOLUTION_PROMPT = (
     "Write a Python function that solves the following problem. "
     "Return only the function code, no explanations.\n\n"
     "{problem_description}"
 )
+
+# Data directory relative to project root
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 
 @dataclass
@@ -33,14 +40,14 @@ class BenchmarkProblem:
     prompt: str
     canonical_solution: str  # Human reference solution
     test: str  # Test cases
-    llm_solutions: dict[str, str]  # model_name → solution
+    llm_solutions: dict[str, str] = field(default_factory=dict)
 
 
 class DatasetCollector:
     """
     Collects benchmark datasets and generates LLM solutions.
 
-    Supports HumanEval and MBPP datasets.
+    Supports HumanEval (164 problems) and MBPP (974 problems).
     API keys are loaded from the BenchmarkConfig (environment variables).
     """
 
@@ -52,37 +59,106 @@ class DatasetCollector:
 
     def collect(self) -> list[BenchmarkProblem]:
         """
-        Collect dataset and generate LLM solutions.
+        Full pipeline: load dataset → filter to clean single-function
+        problems → select N samples → generate LLM solutions.
 
         Returns:
-            List of BenchmarkProblem objects with solutions.
+            List of BenchmarkProblem objects with all solutions.
         """
-        # Load dataset
+        # Step 1: Load raw dataset
         if self.config.dataset == "humaneval":
-            problems = self._load_humaneval()
+            raw_problems = self._load_humaneval()
         else:
-            problems = self._load_mbpp()
+            raw_problems = self._load_mbpp()
 
-        # Select N samples
-        problems = problems[: self.config.n_samples]
+        print(f"  Loaded {len(raw_problems)} raw problems from {self.config.dataset}")
 
-        # Generate LLM solutions
+        # Step 2: Filter to clean, single-function problems
+        clean_problems = self._filter_single_function(raw_problems)
+        print(f"  Filtered to {len(clean_problems)} clean single-function problems")
+
+        # Step 3: Select N samples
+        problems = clean_problems[: self.config.n_samples]
+        print(f"  Selected {len(problems)} samples for benchmarking")
+
+        # Step 4: Generate LLM solutions
         available_models = self.config.validate()
-        for problem in problems:
+        if not available_models:
+            print("  ⚠ No API keys found — skipping LLM solution generation")
+            return problems
+
+        print(f"  Generating solutions with: {', '.join(available_models)}")
+
+        for i, problem in enumerate(problems):
             for model in available_models:
                 try:
                     solution = self._generate_solution(model, problem.prompt)
                     problem.llm_solutions[model] = solution
                     time.sleep(0.5)  # Rate limiting
                 except Exception as e:
+                    print(f"    ⚠ {model} failed on {problem.task_id}: {e}")
                     problem.llm_solutions[model] = f"# Error: {e}"
+
+            if (i + 1) % 10 == 0:
+                print(f"    Progress: {i + 1}/{len(problems)} problems")
 
         return problems
 
+    def _filter_single_function(
+        self, problems: list[BenchmarkProblem]
+    ) -> list[BenchmarkProblem]:
+        """
+        Filter to problems with clean, single-function human solutions.
+
+        A 'clean' problem has a canonical solution that:
+        1. Parses as valid Python
+        2. Contains exactly one function definition
+        3. Is not trivially empty
+        """
+        clean = []
+        for problem in problems:
+            solution = problem.canonical_solution
+            if not solution or not solution.strip():
+                continue
+
+            try:
+                # Try to parse: prompt + canonical (HumanEval format)
+                # IMPORTANT: do NOT strip the canonical_solution — it's
+                # indented as the function body in HumanEval
+                full_source = problem.prompt + solution
+                tree = ast.parse(full_source)
+
+                # Count top-level function definitions
+                func_count = sum(
+                    1 for node in ast.iter_child_nodes(tree)
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                )
+
+                if func_count == 1:
+                    clean.append(problem)
+            except SyntaxError:
+                # Try the solution alone
+                try:
+                    tree = ast.parse(solution)
+                    func_count = sum(
+                        1 for node in ast.iter_child_nodes(tree)
+                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    )
+                    if func_count == 1:
+                        clean.append(problem)
+                except SyntaxError:
+                    continue
+
+        return clean
+
     def _load_humaneval(self) -> list[BenchmarkProblem]:
-        """Load HumanEval dataset."""
+        """
+        Load HumanEval dataset (164 problems).
+
+        Uses the `human-eval` package if installed, otherwise
+        falls back to loading from a JSONL file.
+        """
         try:
-            # Try to load from the human-eval package
             from human_eval.data import read_problems
 
             problems_dict = read_problems()
@@ -94,32 +170,46 @@ class DatasetCollector:
                         prompt=data["prompt"],
                         canonical_solution=data.get("canonical_solution", ""),
                         test=data.get("test", ""),
-                        llm_solutions={},
                     )
                 )
             return problems
         except ImportError:
-            # Fallback: load from JSONL file if available
-            return self._load_from_jsonl("HumanEval.jsonl")
-
-    def _load_mbpp(self) -> list[BenchmarkProblem]:
-        """Load MBPP dataset."""
-        try:
-            mbpp_path = Path("mbpp.jsonl")
-            if mbpp_path.exists():
-                return self._load_from_jsonl("mbpp.jsonl")
-
-            # Try to download
-            import urllib.request
-
-            url = "https://raw.githubusercontent.com/google-research/google-research/master/mbpp/mbpp.jsonl"
-            urllib.request.urlretrieve(url, "mbpp.jsonl")
-            return self._load_from_jsonl("mbpp.jsonl")
-        except Exception:
+            # Fallback: load from JSONL file
+            jsonl_path = DATA_DIR / "HumanEval.jsonl"
+            if jsonl_path.exists():
+                return self._load_from_jsonl(str(jsonl_path))
+            print("  ⚠ human-eval package not installed and HumanEval.jsonl not found")
+            print("    Install: uv pip install human-eval")
             return []
 
+    def _load_mbpp(self) -> list[BenchmarkProblem]:
+        """
+        Load MBPP dataset (974 problems).
+
+        Downloads from GitHub if not cached locally.
+        """
+        mbpp_path = DATA_DIR / "mbpp.jsonl"
+
+        if not mbpp_path.exists():
+            print("  Downloading MBPP dataset...")
+            try:
+                import urllib.request
+
+                DATA_DIR.mkdir(parents=True, exist_ok=True)
+                url = (
+                    "https://raw.githubusercontent.com/google-research/"
+                    "google-research/master/mbpp/mbpp.jsonl"
+                )
+                urllib.request.urlretrieve(url, str(mbpp_path))
+                print("  ✓ MBPP downloaded")
+            except Exception as e:
+                print(f"  ⚠ Failed to download MBPP: {e}")
+                return []
+
+        return self._load_from_jsonl(str(mbpp_path))
+
     def _load_from_jsonl(self, filepath: str) -> list[BenchmarkProblem]:
-        """Load problems from a JSONL file."""
+        """Load problems from a JSONL file (works for both HumanEval & MBPP)."""
         problems = []
         path = Path(filepath)
         if not path.exists():
@@ -127,16 +217,27 @@ class DatasetCollector:
 
         with open(path, encoding="utf-8") as f:
             for line in f:
-                data = json.loads(line.strip())
+                line = line.strip()
+                if not line:
+                    continue
+                data = json.loads(line)
+
+                # Handle both HumanEval and MBPP formats
+                task_id = str(data.get("task_id", ""))
+                prompt = data.get("prompt", data.get("text", ""))
+                canonical = data.get("canonical_solution", data.get("code", ""))
+                test = data.get("test", "")
+
+                # MBPP has test_list instead of test
+                if not test and "test_list" in data:
+                    test = "\n".join(data["test_list"])
+
                 problems.append(
                     BenchmarkProblem(
-                        task_id=data.get("task_id", data.get("task_id", "")),
-                        prompt=data.get("prompt", data.get("text", "")),
-                        canonical_solution=data.get(
-                            "canonical_solution", data.get("code", "")
-                        ),
-                        test=data.get("test", ""),
-                        llm_solutions={},
+                        task_id=task_id,
+                        prompt=prompt,
+                        canonical_solution=canonical,
+                        test=test,
                     )
                 )
 
@@ -156,7 +257,7 @@ class DatasetCollector:
             raise ValueError(f"Unknown model: {model}")
 
     def _call_claude(self, prompt: str) -> str:
-        """Call Claude API."""
+        """Call Claude Opus 4.6 API."""
         if self._anthropic_client is None:
             import anthropic
 
@@ -172,7 +273,7 @@ class DatasetCollector:
         return message.content[0].text
 
     def _call_gpt4o(self, prompt: str) -> str:
-        """Call GPT-4o API."""
+        """Call GPT-5.2 API."""
         if self._openai_client is None:
             import openai
 
@@ -188,7 +289,7 @@ class DatasetCollector:
         return response.choices[0].message.content
 
     def _call_gemini(self, prompt: str) -> str:
-        """Call Gemini API."""
+        """Call Gemini 2.5 Pro API."""
         if self._google_model is None:
             import google.generativeai as genai
 
@@ -201,7 +302,7 @@ class DatasetCollector:
     def save_dataset(
         self, problems: list[BenchmarkProblem], output_path: str
     ) -> None:
-        """Save collected dataset to JSON."""
+        """Save collected dataset to structured JSON."""
         data = []
         for p in problems:
             data.append(
@@ -217,3 +318,5 @@ class DatasetCollector:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+
+        print(f"  ✓ Dataset saved to {output_path} ({len(data)} problems)")
