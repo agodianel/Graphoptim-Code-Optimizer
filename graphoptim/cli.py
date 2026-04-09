@@ -330,9 +330,16 @@ def optimize(
                     _print_diff(source, result, str(target))
                 console.print(f"[green]✓ Optimized code saved to {output}[/green]")
             elif show_diff:
-                # Diff mode — show colored diff only
+                # Diff mode — show colored diff and auto-save for review
                 result = go.optimize(source, passes=pass_list, budget=budget_dict)
                 _print_diff(source, result, str(target))
+                
+                if result.strip() != source.strip():
+                    out_dir = Path("graphoptimized")
+                    out_dir.mkdir(exist_ok=True)
+                    out_file = out_dir / f"{target.stem}_optimized{target.suffix}"
+                    out_file.write_text(result, encoding="utf-8")
+                    console.print(f"\n[bold green]💾 Optimized file automatically saved to: {out_file}[/bold green]")
             else:
                 # Dry run — print full optimized code
                 result = go.optimize(source, passes=pass_list, budget=budget_dict)
