@@ -81,7 +81,13 @@ graphoptim analyze myfile.py
 # Analyze with detailed metrics
 graphoptim analyze myfile.py --verbose
 
-# Optimize (preview mode — no files changed)
+# Show a diff of what would change (recommended first step)
+graphoptim optimize myfile.py --diff
+
+# Show diff for an entire project
+graphoptim optimize ./src --diff
+
+# Optimize (preview mode — prints full optimized code)
 graphoptim optimize myfile.py
 
 # Optimize in-place (creates .bak backup)

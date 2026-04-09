@@ -272,13 +272,14 @@ def _print_file_report(report, verbose: bool) -> None:
 @main.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--dry-run", is_flag=True, default=True, help="Preview only (default)")
+@click.option("--diff", "show_diff", is_flag=True, help="Show unified diff of changes")
 @click.option("--inplace", is_flag=True, help="Modify file in-place (creates .bak)")
 @click.option("--output", "-o", type=click.Path(), help="Output to file")
 @click.option(
     "--passes",
     "-p",
     type=str,
-    help="Comma-separated list of passes (e.g., dead_code,path_shortener)",
+    help="Comma-separated list of passes (e.g., dead_code,guard_clause)",
 )
 @click.option(
     "--budget",
@@ -289,6 +290,7 @@ def _print_file_report(report, verbose: bool) -> None:
 def optimize(
     path: str,
     dry_run: bool,
+    show_diff: bool,
     inplace: bool,
     output: Optional[str],
     passes: Optional[str],
@@ -297,6 +299,14 @@ def optimize(
     """Optimize Python code by applying graph-theoretic passes.
 
     PATH can be a single Python file or a directory.
+
+    Examples:
+
+        graphoptim optimize myfile.py --diff
+
+        graphoptim optimize myfile.py --inplace
+
+        graphoptim optimize src/ --diff
     """
     import graphoptim as go
 
@@ -306,6 +316,8 @@ def optimize(
 
     if target.is_file():
         try:
+            source = target.read_text(encoding="utf-8")
+
             if inplace:
                 result = go.optimize_file(
                     str(target),
@@ -313,6 +325,8 @@ def optimize(
                     passes=pass_list,
                     budget=budget_dict,
                 )
+                if show_diff:
+                    _print_diff(source, result, str(target))
                 console.print(
                     f"[green]✓ Optimized {target} in-place "
                     f"(backup: {target}.bak)[/green]"
@@ -324,16 +338,20 @@ def optimize(
                     passes=pass_list,
                     budget=budget_dict,
                 )
+                if show_diff:
+                    _print_diff(source, result, str(target))
                 console.print(f"[green]✓ Optimized code saved to {output}[/green]")
+            elif show_diff:
+                # Diff mode — show colored diff only
+                result = go.optimize(source, passes=pass_list, budget=budget_dict)
+                _print_diff(source, result, str(target))
             else:
-                # Dry run — just print
-                source = target.read_text(encoding="utf-8")
+                # Dry run — print full optimized code
                 result = go.optimize(source, passes=pass_list, budget=budget_dict)
                 console.print(Panel("[bold cyan]Optimized Code (dry run)[/bold cyan]"))
                 console.print(result)
 
-            # Show before/after analysis
-            source = target.read_text(encoding="utf-8")
+            # Show before/after score
             before = go.analyze(source, str(target))
             after = go.analyze(result, str(target))
 
@@ -343,30 +361,122 @@ def optimize(
                     f"{before.total_score}/100 → "
                     f"[green]{after.total_score}/100[/green]"
                 )
+            elif show_diff and source.strip() == result.strip():
+                console.print(
+                    "\n[dim]No changes — code is already optimal.[/dim]"
+                )
 
         except Exception as e:
             console.print(f"[red]Error optimizing {target}: {e}[/red]")
             sys.exit(1)
 
     elif target.is_dir():
-        if output:
-            with console.status("[bold cyan]Optimizing project...[/bold cyan]"):
-                count = go.optimize_project(
-                    str(target),
-                    output_dir=output,
-                    passes=pass_list,
-                    budget=budget_dict,
-                )
-            console.print(
-                f"[green]✓ Optimized {count} files → {output}[/green]"
-            )
+        if show_diff or output or inplace:
+            _optimize_directory(target, show_diff, inplace, output, pass_list, budget_dict)
         else:
             console.print(
-                "[yellow]Specify --output DIR or --inplace for directory optimization[/yellow]"
+                "[yellow]Specify --diff, --output DIR, or --inplace "
+                "for directory optimization[/yellow]"
             )
     else:
         console.print(f"[red]Error: '{path}' is not a valid file or directory[/red]")
         sys.exit(1)
+
+
+def _optimize_directory(
+    dirpath: Path,
+    show_diff: bool,
+    inplace: bool,
+    output: Optional[str],
+    pass_list: Optional[list[str]],
+    budget_dict: dict,
+) -> None:
+    """Optimize all Python files in a directory."""
+    import graphoptim as go
+
+    if output:
+        with console.status("[bold cyan]Optimizing project...[/bold cyan]"):
+            count = go.optimize_project(
+                str(dirpath),
+                output_dir=output,
+                passes=pass_list,
+                budget=budget_dict,
+            )
+        console.print(
+            f"[green]✓ Optimized {count} files → {output}[/green]"
+        )
+        return
+
+    # Diff or inplace mode — process file by file
+    exclude = ["__pycache__", ".venv", "venv", ".git", "node_modules",
+               ".egg-info", "dist", "build"]
+    files_changed = 0
+
+    for py_file in sorted(dirpath.rglob("*.py")):
+        if any(x in str(py_file) for x in exclude):
+            continue
+
+        try:
+            source = py_file.read_text(encoding="utf-8")
+            result = go.optimize(source, passes=pass_list, budget=budget_dict)
+
+            if source.strip() != result.strip():
+                files_changed += 1
+                if show_diff:
+                    _print_diff(source, result, str(py_file))
+                if inplace:
+                    import shutil
+                    backup = py_file.with_suffix(py_file.suffix + ".bak")
+                    shutil.copy2(py_file, backup)
+                    py_file.write_text(result, encoding="utf-8")
+        except Exception:
+            continue
+
+    if files_changed == 0:
+        console.print("\n[dim]No changes — all files are already optimal.[/dim]")
+    else:
+        msg = f"\n[bold]{files_changed} file(s) with suggested changes[/bold]"
+        if inplace:
+            msg += " [green](applied in-place)[/green]"
+        console.print(msg)
+
+
+def _print_diff(original: str, optimized: str, filepath: str) -> None:
+    """Print a colored unified diff between original and optimized code."""
+    import difflib
+
+    if original.strip() == optimized.strip():
+        return
+
+    original_lines = original.splitlines(keepends=True)
+    optimized_lines = optimized.splitlines(keepends=True)
+
+    diff = difflib.unified_diff(
+        original_lines,
+        optimized_lines,
+        fromfile=f"{filepath} (original)",
+        tofile=f"{filepath} (optimized)",
+        lineterm="",
+    )
+
+    console.print()
+    console.print(Panel(f"[bold cyan]{filepath}[/bold cyan]", border_style="cyan"))
+
+    for line in diff:
+        line = line.rstrip("\n")
+        if line.startswith("+++"):
+            console.print(f"[bold green]{line}[/bold green]")
+        elif line.startswith("---"):
+            console.print(f"[bold red]{line}[/bold red]")
+        elif line.startswith("@@"):
+            console.print(f"[cyan]{line}[/cyan]")
+        elif line.startswith("+"):
+            console.print(f"[green]{line}[/green]")
+        elif line.startswith("-"):
+            console.print(f"[red]{line}[/red]")
+        else:
+            console.print(f"[dim]{line}[/dim]")
+
 
 
 @main.command()
