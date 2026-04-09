@@ -2,20 +2,13 @@
 
 ## Summary
 
-Total functions analyzed: 200
+Total functions analyzed: 10
 
 ## Statistical Analysis
 
 Comparison of graph-level structural metrics between human-written
 and LLM-generated code using Mann-Whitney U tests.
 
-| Metric | Model | Human Median | LLM Median | p-value | Significant |
-|--------|-------|-------------|------------|---------|-------------|
-| cyclomatic_complexity | gpt4o | 3.00 | 3.00 | 0.7914 |  |
-| dead_nodes_count | gpt4o | 0.00 | 0.00 | 1.0000 |  |
-| cfg_diameter | gpt4o | 1.00 | 1.00 | 1.0000 |  |
-| max_betweenness_centrality | gpt4o | 0.00 | 0.00 | 1.0000 |  |
-| lines_of_code | gpt4o | 15.50 | 6.00 | 0.0000 | ✓ |
 
 ## Interpretation
 

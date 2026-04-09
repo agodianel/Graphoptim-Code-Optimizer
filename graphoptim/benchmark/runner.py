@@ -406,16 +406,74 @@ class BenchmarkRunner:
             return None
 
     def _clean_source(self, source: str) -> str:
-        """Clean LLM output — remove markdown fences, explanations, etc."""
-        lines = source.strip().splitlines()
+        """
+        Clean LLM output — extract valid Python from markdown responses.
 
-        # Remove markdown code fences
-        if lines and lines[0].strip().startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip().startswith("```"):
-            lines = lines[:-1]
+        Handles:
+        - Markdown code fences (```python ... ```)
+        - Explanatory text before/after code
+        - Multiple code blocks (takes the largest)
+        - Truncated output (removes incomplete trailing statements)
+        """
+        import ast
+        import re
 
-        return "\n".join(lines)
+        text = source.strip()
+
+        # Strategy 1: Extract code from markdown fences
+        # Find all ```python ... ``` blocks (closed fences)
+        pattern = r"```(?:python)?\s*\n(.*?)```"
+        blocks = re.findall(pattern, text, re.DOTALL)
+
+        if not blocks:
+            # Handle truncated output — opening fence but no closing fence
+            pattern_open = r"```(?:python)?\s*\n(.*)"
+            blocks = re.findall(pattern_open, text, re.DOTALL)
+
+        if blocks:
+            # Use the largest code block
+            code = max(blocks, key=len).strip()
+        else:
+            # No fences — try stripping non-code lines from start/end
+            lines = text.splitlines()
+
+            # Remove leading non-code lines (explanations)
+            start = 0
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if (
+                    stripped.startswith(("import ", "from ", "class ", "def ",
+                                        "#", "@", "\"\"\""))
+                    or stripped == ""
+                    or stripped.startswith(("'''", "logging", "__"))
+                ):
+                    start = i
+                    break
+
+            code = "\n".join(lines[start:])
+
+        # Strategy 2: If truncated, trim until it parses
+        # Try parsing as-is first
+        try:
+            ast.parse(code)
+            return code
+        except SyntaxError:
+            pass
+
+        # Remove trailing incomplete lines until it parses
+        lines = code.splitlines()
+        for trim in range(1, min(30, len(lines))):
+            trimmed = "\n".join(lines[:-trim])
+            if not trimmed.strip():
+                break
+            try:
+                ast.parse(trimmed)
+                return trimmed
+            except SyntaxError:
+                continue
+
+        # Final fallback: return what we have (will fail at analysis)
+        return code
 
     def _run_statistical_tests(self, df: pd.DataFrame) -> pd.DataFrame:
         """Run Mann-Whitney U tests between human and each LLM group."""

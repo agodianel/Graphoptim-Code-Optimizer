@@ -308,15 +308,16 @@ class DatasetCollector:
         """Generate a solution for real-world tasks (multi-function)."""
         full_prompt = (
             "Write a complete Python module that implements the following. "
-            "Return only valid Python code, no explanations or markdown. "
-            "Include all necessary imports, classes, and functions.\n\n"
+            "Return ONLY raw Python code. Do NOT wrap in markdown code fences. "
+            "Do NOT include ```python or ``` markers. Do NOT add any explanations. "
+            "Just output the Python source code directly, starting with imports.\n\n"
             f"{prompt}"
         )
 
         if model == "claude":
-            return self._call_claude(full_prompt, max_tokens=4096)
+            return self._call_claude(full_prompt, max_tokens=8192)
         elif model == "gpt4o":
-            return self._call_gpt4o(full_prompt, max_tokens=4096)
+            return self._call_gpt4o(full_prompt, max_tokens=8192)
         elif model == "gemini":
             return self._call_gemini(full_prompt)
         else:

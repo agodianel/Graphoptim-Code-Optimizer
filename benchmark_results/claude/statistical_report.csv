@@ -1,6 +1,0 @@
-metric,model,human_median,llm_median,u_statistic,p_value,significant
-cyclomatic_complexity,claude,3.0,3.0,5111.5,0.7814270627494333,False
-dead_nodes_count,claude,0.0,0.0,5000.0,1.0,False
-cfg_diameter,claude,1.0,1.0,5000.0,1.0,False
-max_betweenness_centrality,claude,0.0,0.0,5000.0,1.0,False
-lines_of_code,claude,15.5,6.0,9080.0,1.632990928728727e-23,True
