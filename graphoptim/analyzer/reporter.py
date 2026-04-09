@@ -275,10 +275,17 @@ def _suggest_passes(
         suggestions.append("path_shortener")
 
     if bottlenecks:
-        suggestions.append("centrality_split")
+        suggestions.append("centrality")
 
     if deep_chains or metrics.cyclomatic_complexity > CC_THRESHOLD:
-        suggestions.append("critical_path")
+        suggestions.append("guard_clause")
+
+    # Always suggest these lightweight passes when there's room for improvement
+    if metrics.lines_of_code > 10:
+        suggestions.append("unused_variable")
+
+    if metrics.lines_of_code > 5:
+        suggestions.append("constant_folding")
 
     return suggestions
 

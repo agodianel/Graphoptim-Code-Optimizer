@@ -14,6 +14,9 @@ from typing import Optional
 from graphoptim.optimizer.passes.dead_code import DeadCodePass
 from graphoptim.optimizer.passes.path_shortener import PathShortenerPass
 from graphoptim.optimizer.passes.centrality import CentralityPass
+from graphoptim.optimizer.passes.guard_clause import GuardClausePass
+from graphoptim.optimizer.passes.unused_variable import UnusedVariablePass
+from graphoptim.optimizer.passes.constant_folding import ConstantFoldingPass
 from graphoptim.optimizer.passes.knapsack import KnapsackSelector, PassInfo
 
 
@@ -22,6 +25,9 @@ PASS_REGISTRY: dict[str, type] = {
     "dead_code": DeadCodePass,
     "path_shortener": PathShortenerPass,
     "centrality": CentralityPass,
+    "guard_clause": GuardClausePass,
+    "unused_variable": UnusedVariablePass,
+    "constant_folding": ConstantFoldingPass,
 }
 
 

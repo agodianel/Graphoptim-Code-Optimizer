@@ -99,8 +99,12 @@ def detect_redundant_paths(cfg: nx.DiGraph) -> list[RedundantPath]:
     Detect redundant (duplicate) paths in a CFG.
 
     Two paths are considered redundant if they:
-    1. Start and end at the same nodes
-    2. Have equivalent intermediate operations (same AST structure)
+    1. Diverge from the same branch point (a node with out-degree >= 2)
+    2. Reconverge at the same target node
+    3. Have equivalent intermediate operations (same AST structure)
+
+    This scoped approach avoids the O(N²) all-pairs explosion that
+    produces inflated false-positive counts.
 
     Args:
         cfg: NetworkX DiGraph representing the CFG.
@@ -109,48 +113,90 @@ def detect_redundant_paths(cfg: nx.DiGraph) -> list[RedundantPath]:
         List of RedundantPath objects.
     """
     redundant = []
+    seen_pairs: set[tuple[tuple[int, ...], tuple[int, ...]]] = set()
 
-    # Find all pairs of nodes with multiple paths between them
-    for source in cfg.nodes:
-        for target in cfg.nodes:
-            if source == target:
-                continue
+    # Only compare paths that diverge from actual branch points
+    branch_points = [n for n in cfg.nodes if cfg.out_degree(n) >= 2]
 
-            try:
-                paths = list(nx.all_simple_paths(cfg, source, target, cutoff=10))
-            except nx.NetworkXError:
-                continue
+    for branch_node in branch_points:
+        # Get the immediate successors (diverging branches)
+        successors = list(cfg.successors(branch_node))
+        if len(successors) < 2:
+            continue
 
-            if len(paths) < 2:
-                continue
+        # For each pair of successors, find where they reconverge
+        for i in range(len(successors)):
+            for j in range(i + 1, len(successors)):
+                succ_a = successors[i]
+                succ_b = successors[j]
 
-            # Compare path fingerprints
-            fingerprints: dict[str, list[list[int]]] = {}
-            for path in paths:
-                fp = _path_fingerprint(cfg, path)
-                if fp not in fingerprints:
-                    fingerprints[fp] = []
-                fingerprints[fp].append(path)
+                # Find common reachable nodes (reconvergence points)
+                try:
+                    reachable_a = nx.descendants(cfg, succ_a)
+                    reachable_b = nx.descendants(cfg, succ_b)
+                except nx.NetworkXError:
+                    continue
 
-            # Report groups with duplicate fingerprints
-            for fp, group in fingerprints.items():
-                if len(group) >= 2:
-                    for i in range(1, len(group)):
-                        line_a = cfg.nodes[group[0][0]].get("lineno")
-                        line_b = cfg.nodes[group[i][0]].get("lineno")
-                        redundant.append(
-                            RedundantPath(
-                                path_a=group[0],
-                                path_b=group[i],
-                                fingerprint=fp,
-                                line_a=line_a,
-                                line_b=line_b,
-                                description=(
-                                    f"Paths {group[0]} and {group[i]} are "
-                                    f"structurally equivalent"
-                                ),
-                            )
+                reconvergence = reachable_a & reachable_b
+                if not reconvergence:
+                    continue
+
+                # Check the shortest paths from each successor to reconvergence
+                for target in reconvergence:
+                    try:
+                        paths_a = list(
+                            nx.all_simple_paths(cfg, succ_a, target, cutoff=8)
                         )
+                        paths_b = list(
+                            nx.all_simple_paths(cfg, succ_b, target, cutoff=8)
+                        )
+                    except nx.NetworkXError:
+                        continue
+
+                    if not paths_a or not paths_b:
+                        continue
+
+                    # Compare fingerprints between the branch paths
+                    for path_a in paths_a:
+                        fp_a = _path_fingerprint(cfg, path_a)
+                        if not fp_a:  # Skip empty/unresolvable fingerprints
+                            continue
+                        for path_b in paths_b:
+                            fp_b = _path_fingerprint(cfg, path_b)
+                            if not fp_b:
+                                continue
+
+                            if fp_a == fp_b and len(path_a) >= 2:
+                                # Deduplicate — normalize path pair ordering
+                                key_a = tuple(path_a)
+                                key_b = tuple(path_b)
+                                pair_key = (
+                                    (min(key_a, key_b), max(key_a, key_b))
+                                )
+                                if pair_key in seen_pairs:
+                                    continue
+                                seen_pairs.add(pair_key)
+
+                                line_a = cfg.nodes[path_a[0]].get("lineno")
+                                line_b = cfg.nodes[path_b[0]].get("lineno")
+                                redundant.append(
+                                    RedundantPath(
+                                        path_a=[branch_node] + path_a,
+                                        path_b=[branch_node] + path_b,
+                                        fingerprint=fp_a,
+                                        line_a=line_a,
+                                        line_b=line_b,
+                                        description=(
+                                            f"Branches from node {branch_node} "
+                                            f"through {succ_a} and {succ_b} "
+                                            f"perform equivalent operations"
+                                        ),
+                                    )
+                                )
+                                break  # One match per branch pair is enough
+                        else:
+                            continue
+                        break  # One match per reconvergence point
 
     return redundant
 
@@ -264,15 +310,27 @@ def _path_fingerprint(cfg: nx.DiGraph, path: list[int]) -> str:
     """
     Compute a structural fingerprint for a path in the CFG.
 
-    Uses the labels and block structures of intermediate nodes.
+    Uses the AST structure of statements in each node's block.
+    Returns an empty string if the path cannot be reliably fingerprinted
+    (avoids false positives from generic label matching).
     """
     parts = []
+    has_structural_data = False
+
     for node_id in path:
         block = cfg.nodes[node_id].get("block")
-        if block and hasattr(block, "statements"):
+        if block and hasattr(block, "statements") and block.statements:
+            has_structural_data = True
             for stmt in block.statements:
                 parts.append(ast_node_hash(stmt))
         else:
-            label = cfg.nodes[node_id].get("label", str(node_id))
-            parts.append(label)
+            # Use a unique placeholder per node to avoid false matches
+            # between different generic nodes like "if_cond" and "if_cond"
+            parts.append(f"__node_{node_id}__")
+
+    # Require at least some real structural data to produce a valid fingerprint
+    if not has_structural_data:
+        return ""
+
     return "|".join(parts)
+

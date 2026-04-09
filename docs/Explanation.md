@@ -1,12 +1,14 @@
-# How GraphOptim Makes LLM-Generated Code Better
+# How GraphOptim Makes Your Code Structurally Better
 
 ## The Problem
 
-Large Language Models (LLMs) generate code that **works** — it passes tests, handles edge cases, and follows conventions. But working code is not the same as **structurally efficient** code.
+Whether written by AI assistants or humans under deadline pressure, production Python code often **works** — it passes tests, handles edge cases, and follows conventions. But working code is not the same as **structurally efficient** code.
 
-When an LLM generates a 200+ line module, it doesn't "see" the overall control flow graph. It generates code **sequentially**, token by token, which introduces patterns that a human reviewing the full architecture would catch — but that traditional linters like `ruff` or `pylint` cannot detect.
+Complex modules (200+ lines) accumulate structural patterns — deeply nested conditionals, dead code paths, unused variables, and bottleneck functions — that are hard to spot in code review but degrade maintainability. Traditional linters like `ruff` or `pylint` cannot detect these graph-level issues.
 
 > **GraphOptim operates at a layer above syntax — it analyzes the _structure_ of your code as a graph, finding inefficiencies invisible to rule-based tools.**
+
+> AI-generated code is *especially* prone to these patterns because LLMs generate code sequentially, token by token, without "seeing" the overall control flow graph.
 
 ---
 
@@ -51,9 +53,9 @@ graph TB
 
 ---
 
-## The Four Structural Patterns
+## The Seven Structural Patterns
 
-GraphOptim detects four categories of structural inefficiency that LLMs consistently produce in complex code:
+GraphOptim detects seven categories of structural inefficiency commonly found in complex code:
 
 ### 1. 🔴 Dead Code (Unreachable Nodes)
 
@@ -254,7 +256,109 @@ graph TD
     style F fill:#2ecc71,stroke:#27ae60,color:#fff
 ```
 
-**How it's detected:** GraphOptim identifies subgraphs (sequences of nodes) that are structurally isomorphic across different branches of the CFG.
+**How it's detected:** GraphOptim identifies subgraphs (sequences of nodes) that are structurally isomorphic across different branches of the CFG. The detection is scoped to actual branch points (nodes with out-degree ≥ 2) to avoid false positives.
+
+---
+
+### 5. 🟢 Guard Clause Opportunities (Deep Nesting)
+
+**What it is:** Functions where the entire body is wrapped in one or more nested `if` statements that could be refactored into early-return guard clauses.
+
+**Why code accumulates it:** When handling edge cases, developers (and LLMs especially) add `if` checks inside existing blocks rather than restructuring — leading to 4-5+ levels of nesting.
+
+**Example — deeply nested code:**
+```python
+def process_file(path):
+    if path:
+        if os.path.exists(path):
+            if path.endswith('.csv'):
+                with open(path) as f:
+                    data = csv.reader(f)
+                    for row in data:
+                        if len(row) > 3:
+                            yield transform(row)  # depth = 8!
+```
+
+**After GraphOptim (guard clause refactoring):**
+```diff
+ def process_file(path):
+-    if path:
+-        if os.path.exists(path):
+-            if path.endswith('.csv'):
+-                with open(path) as f:
+-                    ...
++    if not path:
++        return
++    if not os.path.exists(path):
++        return
++    if not path.endswith('.csv'):
++        return
++
++    with open(path) as f:
++        data = csv.reader(f)
++        for row in data:
++            if len(row) > 3:
++                yield transform(row)  # depth = 3 ✓
+```
+
+**How it's detected:** GraphOptim identifies functions where the body is a single `if`-statement (or chain of nested `if`-statements without `else` branches) that wraps all the main logic, then inverts the conditions into guard clauses.
+
+---
+
+### 6. 🟣 Unused Variables (Dead Assignments)
+
+**What it is:** Variables that are assigned a value but never read anywhere in the function — dead weight that adds confusion and hides the actual data flow.
+
+**Why code accumulates it:** During iterative development, variables that were once needed become orphaned after refactoring. LLMs also frequently assign intermediate values "for clarity" that are never used.
+
+**Example — unused variables:**
+```python
+def process_data(items):
+    temp = items[:]        # ← never used
+    debug_info = "start"   # ← never used
+    result = transform(items)
+    return result
+```
+
+**After GraphOptim:**
+```diff
+ def process_data(items):
+-    temp = items[:]
+-    debug_info = "start"
+     result = transform(items)
+     return result
+```
+
+> **Safety:** GraphOptim only removes assignments where the right-hand side is a *pure expression* (no function calls or I/O). Assignments like `result = process(data)` are flagged but not auto-removed, since `process()` may have side effects.
+
+**How it's detected:** GraphOptim collects all name assignments and name references (reads) in each function, then identifies assignments whose target name never appears in a `Load` context.
+
+---
+
+### 7. 🔵 Constant Expressions (Foldable Computations)
+
+**What it is:** Arithmetic or string expressions where all operands are constants, meaning the result can be computed at parse time instead of at runtime.
+
+**Why code accumulates it:** Developers use expressions like `60 * 60` or `1024 * 1024` for readability. While this is a minor optimization, folding them makes the actual value immediately visible.
+
+**Example — constant expressions:**
+```python
+TIMEOUT = 60 * 60
+MAX_SIZE = 1024 * 1024
+API_PREFIX = "api" + "_" + "v2"
+```
+
+**After GraphOptim:**
+```diff
+-TIMEOUT = 60 * 60
++TIMEOUT = 3600
+-MAX_SIZE = 1024 * 1024
++MAX_SIZE = 1048576
+-API_PREFIX = "api" + "_" + "v2"
++API_PREFIX = "api_v2"
+```
+
+**How it's detected:** GraphOptim recursively evaluates `BinOp` and `UnaryOp` AST nodes where all operands are `ast.Constant`. It refuses to fold expressions that would produce NaN, Infinity, or values exceeding 10¹⁸.
 
 ---
 
@@ -324,9 +428,12 @@ graph TD
 
 | Pass | What it does | Risk | Value |
 |------|-------------|------|-------|
-| `dead_code` | Removes unreachable blocks | Low | High (clean code) |
-| `path_shortener` | Flattens deep nesting with guard clauses | Medium | High (readability) |
-| `centrality` | Suggests splitting bottleneck functions | Advisory only | Medium (architecture) |
+| `dead_code` | Removes unreachable blocks | Low (0.2) | High (clean code) |
+| `guard_clause` | Flattens deep nesting with guard clauses | Med-Low (0.4) | High (readability) |
+| `unused_variable` | Removes assigned-but-never-read variables | Low-Med (0.3) | Medium (clean code) |
+| `constant_folding` | Evaluates constant expressions | Very Low (0.1) | Low (clarity) |
+| `path_shortener` | Merges duplicate conditional branches | Medium (0.5) | High (DRY) |
+| `centrality` | Suggests splitting bottleneck functions | Medium (0.6) | Medium (architecture) |
 
 ### Step 4: Apply & Verify
 
@@ -550,16 +657,16 @@ graph TD
 
 ## Comparison With Existing Tools
 
-| Tool | Syntax Errors | Style | Dead Code | Bottlenecks | Deep Chains | Redundant Paths | Graph Analysis |
-|------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **ruff** | ✓ | ✓ | partial | ✗ | ✗ | ✗ | ✗ |
-| **pylint** | ✓ | ✓ | partial | ✗ | ✗ | ✗ | ✗ |
-| **mypy** | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| **vulture** | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| **GraphOptim** | ✗ | ✗ | **✓** | **✓** | **✓** | **✓** | **✓** |
+| Tool | Syntax Errors | Style | Dead Code | Unused Vars | Bottlenecks | Deep Chains | Redundant Paths | Const Folding | Graph Analysis |
+|------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **ruff** | ✓ | ✓ | partial | partial | ✗ | ✗ | ✗ | ✗ | ✗ |
+| **pylint** | ✓ | ✓ | partial | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| **mypy** | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| **vulture** | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| **GraphOptim** | ✗ | ✗ | **✓** | **✓** | **✓** | **✓** | **✓** | **✓** | **✓** |
 
 > GraphOptim is **complementary** to linters — it catches a different class of problems that operate at the structural level, not the syntactic level.
 
 ---
 
-*Generated for GraphOptim v0.1.0 — Graph-Theoretic Optimizer for AI-Generated Python Code*
+*Generated for GraphOptim v0.1.0 — Graph-Theoretic Structural Optimizer for Python Code*

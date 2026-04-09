@@ -1,10 +1,10 @@
 <p align="center">
   <h1 align="center">GraphOptim</h1>
   <p align="center">
-    <strong>Graph-theoretic optimizer for AI-generated Python code</strong>
+    <strong>Graph-theoretic structural optimizer for Python code</strong>
   </p>
   <p align="center">
-    Detects and fixes structural inefficiencies that rule-based linters cannot catch.
+    Detects and fixes structural inefficiencies that rule-based linters cannot catch — especially effective on AI-generated modules.
   </p>
 </p>
 
@@ -21,7 +21,7 @@
 
 ## Why GraphOptim?
 
-AI coding assistants (Copilot, Claude, Cursor, Gemini) produce code that *works* — but often contains **graph-level structural inefficiencies** that traditional linters miss:
+Production Python code — whether written by AI assistants (Copilot, Claude, Cursor, Gemini) or humans — often contains **graph-level structural inefficiencies** that traditional linters miss:
 
 - 🔴 **Redundant execution paths** — duplicate conditional branches
 - 💀 **Dead code blocks** — unreachable code after returns/raises
@@ -139,6 +139,9 @@ Source Code → AST → Control Flow Graph (CFG) → Weighted DiGraph → Analys
 | Pass | Detects | Fixes | Risk |
 |------|---------|-------|------|
 | `dead_code` | Unreachable code after return/raise/break | Removes dead AST nodes | Low (0.2) |
+| `guard_clause` | Deeply nested if-blocks | Refactors to early-return guards | Med-Low (0.4) |
+| `unused_variable` | Assigned-but-never-read variables | Removes safe unused assignments | Low-Med (0.3) |
+| `constant_folding` | Constant arithmetic/string expressions | Evaluates at parse time | Very Low (0.1) |
 | `path_shortener` | Duplicate conditional branches | Merges identical branches | Medium (0.5) |
 | `centrality` | High-betweenness bottleneck nodes | Suggests helper extraction | Medium (0.6) |
 
