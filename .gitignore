@@ -31,3 +31,8 @@ Thumbs.db
 uv.lock
 
 graphoptim_prompt.md
+
+output_dir
+graphoptimized
+pipeline_final.py
+pipeline_final_optimized.py
