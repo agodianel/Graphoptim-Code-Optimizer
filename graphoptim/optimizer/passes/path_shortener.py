@@ -8,11 +8,11 @@ into single paths or helper functions.
 from __future__ import annotations
 
 import ast
+import hashlib
 from dataclasses import dataclass
 from typing import Optional
 
-import hashlib
-from graphoptim.parser.ast_utils import ast_node_hash
+from graphoptim.analyzer.patterns import detect_redundant_paths
 from graphoptim.parser.cfg_builder import build_cfg
 
 
@@ -162,8 +162,10 @@ class _DuplicateBranchMerger(ast.NodeTransformer):
 
         if node.orelse:
             try:
-                true_hashes = hashlib.md5("\n".join(ast.unparse(s) for s in node.body).encode("utf-8")).hexdigest()
-                false_hashes = hashlib.md5("\n".join(ast.unparse(s) for s in node.orelse).encode("utf-8")).hexdigest()
+                true_code = "\n".join(ast.unparse(s) for s in node.body)
+                false_code = "\n".join(ast.unparse(s) for s in node.orelse)
+                true_hashes = hashlib.md5(true_code.encode("utf-8")).hexdigest()
+                false_hashes = hashlib.md5(false_code.encode("utf-8")).hexdigest()
             except Exception:
                 return node
 
