@@ -11,7 +11,7 @@ import ast
 from dataclasses import dataclass
 from typing import Optional
 
-from graphoptim.analyzer.patterns import detect_redundant_paths
+import hashlib
 from graphoptim.parser.ast_utils import ast_node_hash
 from graphoptim.parser.cfg_builder import build_cfg
 
@@ -144,9 +144,13 @@ class PathShortenerPass:
         return findings
 
     def _body_hash(self, body: list[ast.stmt]) -> str:
-        """Compute a structural hash for a list of statements."""
-        hashes = [ast_node_hash(stmt) for stmt in body]
-        return "|".join(hashes)
+        """Compute a strict hash for a list of statements."""
+        # Using ast.unparse for strict structural AND value comparison
+        try:
+            body_code = "\n".join(ast.unparse(stmt) for stmt in body)
+            return hashlib.md5(body_code.encode("utf-8")).hexdigest()
+        except Exception:
+            return str(id(body))
 
 
 class _DuplicateBranchMerger(ast.NodeTransformer):
@@ -157,8 +161,11 @@ class _DuplicateBranchMerger(ast.NodeTransformer):
         self.generic_visit(node)
 
         if node.orelse:
-            true_hashes = [ast_node_hash(s) for s in node.body]
-            false_hashes = [ast_node_hash(s) for s in node.orelse]
+            try:
+                true_hashes = hashlib.md5("\n".join(ast.unparse(s) for s in node.body).encode("utf-8")).hexdigest()
+                false_hashes = hashlib.md5("\n".join(ast.unparse(s) for s in node.orelse).encode("utf-8")).hexdigest()
+            except Exception:
+                return node
 
             if true_hashes == false_hashes:
                 # Both branches are identical — just keep the body
