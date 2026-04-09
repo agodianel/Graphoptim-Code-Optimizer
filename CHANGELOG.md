@@ -23,8 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Scored reports (0-100) with human-readable summaries
 
 - **Optimizer Module**
+  - Added `guard_clause` pass to refactor deeply nested if-blocks into early-returns
+  - Added `unused_variable` pass to safely prune dead assignments with pure expressions
+  - Added `constant_folding` pass for deterministic static expression evaluation
   - Dead code elimination pass (AST-based + CFG-based detection)
-  - Redundant path merger pass (AST structural hashing)
+  - Redundant path merger pass (AST strict hashing)
   - Betweenness centrality decomposition pass (advisory)
   - **0/1 Knapsack pass selector** — optimal pass selection within risk budget
   - Code rewriter with syntax validation and post-processing
@@ -59,6 +62,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Contributing guide with pass extension tutorial
   - Security policy
   - Code of Conduct
+
+### Changed
+
+- CLI `--diff` flag on a single file now automatically saves the output locally into an isolated `graphoptimized/` directory.
+
+### Fixed
+
+- **Critical**: `path_shortener` (`_DuplicateBranchMerger`) now uses strict `ast.unparse` hashing instead of ambiguous topological structural hashing, preventing the destructive merging of branches that only differed by constant values or variable names.
+- Fixed GitHub Actions runner failure by explicitly creating native `uv` virtual environments to bypass Ubuntu's externally managed system Python blocks.
+- Muted Node 20 / Action version deprecation warnings in CI pipeline.
+- Resolved 30+ Pytest and MyPy strict-typing failures.
 
 ### Security
 

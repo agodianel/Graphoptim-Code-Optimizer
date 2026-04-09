@@ -81,7 +81,8 @@ graphoptim analyze myfile.py
 # Analyze with detailed metrics
 graphoptim analyze myfile.py --verbose
 
-# Show a diff of what would change (recommended first step)
+# Show a diff of what would change, and auto-save the generated file 
+# into a graphoptimized/ folder for review (recommended first step)
 graphoptim optimize myfile.py --diff
 
 # Show diff for an entire project
