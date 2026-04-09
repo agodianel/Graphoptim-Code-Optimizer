@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="docs/assets/logo.png" alt="GraphOptim Logo" width="300"/>
   <h1 align="center">GraphOptim</h1>
   <p align="center">
     <strong>Graph-theoretic structural optimizer for Python code</strong>
@@ -9,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/agodianel/Graphoptim-Code-Optimizer/actions/workflows/ci.yml"><img src="https://github.com/agodianel/Graphoptim-Code-Optimizer/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/agodianel/Graphoptim-Code-Optimizer/actions/workflows/ci.yml"><img src="https://github.com/agodianel/Graphoptim-Code-Optimizer/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <a href="https://pypi.org/project/graphoptim/"><img src="https://img.shields.io/pypi/v/graphoptim.svg?color=blue" alt="PyPI version"></a>
   <a href="https://pypi.org/project/graphoptim/"><img src="https://img.shields.io/pypi/pyversions/graphoptim.svg" alt="Python versions"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
