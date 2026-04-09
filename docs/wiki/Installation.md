@@ -23,7 +23,7 @@ pip install "graphoptim[benchmark]"
 ## Install from Source
 
 ```bash
-git clone https://github.com/YOUR-ORG/graphoptim.git
+git clone https://github.com/agodianel/Graphoptim-Code-Optimizer.git
 cd graphoptim
 
 # Using uv (recommended)

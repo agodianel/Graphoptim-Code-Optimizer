@@ -9,12 +9,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOUR-ORG/graphoptim/actions/workflows/ci.yml"><img src="https://github.com/YOUR-ORG/graphoptim/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/agodianel/Graphoptim-Code-Optimizer/actions/workflows/ci.yml"><img src="https://github.com/agodianel/Graphoptim-Code-Optimizer/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/graphoptim/"><img src="https://img.shields.io/pypi/v/graphoptim.svg?color=blue" alt="PyPI version"></a>
   <a href="https://pypi.org/project/graphoptim/"><img src="https://img.shields.io/pypi/pyversions/graphoptim.svg" alt="Python versions"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
-  <a href="https://github.com/YOUR-ORG/graphoptim/blob/main/CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Code of Conduct"></a>
-  <a href="https://github.com/YOUR-ORG/graphoptim/blob/main/CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-Keep%20a%20Changelog-orange.svg" alt="Changelog"></a>
+  <a href="https://github.com/agodianel/Graphoptim-Code-Optimizer/blob/main/CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Code of Conduct"></a>
+  <a href="https://github.com/agodianel/Graphoptim-Code-Optimizer/blob/main/CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-Keep%20a%20Changelog-orange.svg" alt="Changelog"></a>
 </p>
 
 ---
@@ -192,7 +192,7 @@ The benchmark produces:
 
 ```bash
 # Clone and set up
-git clone https://github.com/YOUR-ORG/graphoptim.git
+git clone https://github.com/agodianel/Graphoptim-Code-Optimizer.git
 cd graphoptim
 
 # Install with uv (recommended)
