@@ -9,7 +9,7 @@ data dependencies between operations.
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import networkx as nx
@@ -85,7 +85,9 @@ class DFGBuilder:
 
         return self._graph
 
-    def _process_function(self, func_node: ast.FunctionDef) -> None:
+    def _process_function(
+        self, func_node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> None:
         """Process a function definition, including its arguments."""
         # Function arguments are definitions
         for arg in func_node.args.args:

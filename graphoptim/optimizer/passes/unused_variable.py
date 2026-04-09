@@ -55,7 +55,7 @@ class UnusedVariablePass:
         Returns:
             List of UnusedVariableFinding objects.
         """
-        findings = []
+        findings: list[UnusedVariableFinding] = []
 
         try:
             tree = ast.parse(source_code)
@@ -151,7 +151,9 @@ def _collect_assignments(
 
     # Don't count function arguments as "assignments"
     arg_names = set()
-    for arg in func_node.args.args + func_node.args.posonlyargs + func_node.args.kwonlyargs:
+    for arg in (
+        func_node.args.args + func_node.args.posonlyargs + func_node.args.kwonlyargs
+    ):
         arg_names.add(arg.arg)
     if func_node.args.vararg:
         arg_names.add(func_node.args.vararg.arg)
@@ -287,9 +289,7 @@ class _UnusedVariableRemover(ast.NodeTransformer):
         # Filter out the unused assignments
         return self._filter_stmts(func_node.body, unused_safe)
 
-    def _filter_stmts(
-        self, stmts: list[ast.stmt], unused: set[str]
-    ) -> list[ast.stmt]:
+    def _filter_stmts(self, stmts: list[ast.stmt], unused: set[str]) -> list[ast.stmt]:
         """Recursively filter unused assignments from a statement list."""
         result = []
         for stmt in stmts:

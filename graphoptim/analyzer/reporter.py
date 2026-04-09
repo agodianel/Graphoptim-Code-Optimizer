@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Optional
 
 from graphoptim.analyzer.metrics import CFGMetrics, extract_cfg_metrics
 from graphoptim.analyzer.patterns import (
@@ -24,7 +23,6 @@ from graphoptim.analyzer.patterns import (
 )
 from graphoptim.parser.ast_utils import extract_functions
 from graphoptim.parser.cfg_builder import build_cfg
-
 
 # Thresholds for scoring
 CC_THRESHOLD = 7
@@ -114,9 +112,7 @@ class FunctionReport:
             )
 
         if self.suggested_passes:
-            lines.append(
-                f"  └─ Suggested passes: {', '.join(self.suggested_passes)}"
-            )
+            lines.append(f"  └─ Suggested passes: {', '.join(self.suggested_passes)}")
 
         return "\n".join(lines)
 
@@ -163,9 +159,7 @@ class FileReport:
             lines.append(func_report.summary())
             lines.append("")
 
-        lines.append(
-            f"Run `graphoptim optimize {self.filepath}` to apply fixes."
-        )
+        lines.append(f"Run `graphoptim optimize {self.filepath}` to apply fixes.")
         return "\n".join(lines)
 
     def to_dict(self) -> dict:
@@ -240,7 +234,7 @@ def analyze_source(
             )
             report.functions.append(func_report)
 
-        except Exception as e:
+        except Exception:
             # Graceful degradation — if CFG building fails (e.g., for async
             # functions or complex decorators), still try AST-only metrics
             try:
@@ -318,6 +312,7 @@ def _fallback_metrics(source_code: str) -> CFGMetrics:
 def count_non_blank_lines(source_code: str) -> int:
     """Count non-blank, non-comment lines."""
     return sum(
-        1 for line in source_code.splitlines()
+        1
+        for line in source_code.splitlines()
         if line.strip() and not line.strip().startswith("#")
     )

@@ -10,9 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-import networkx as nx
-
-from graphoptim.analyzer.patterns import BottleneckNode, detect_bottlenecks
+from graphoptim.analyzer.patterns import detect_bottlenecks
 from graphoptim.parser.cfg_builder import build_cfg
 
 

@@ -99,13 +99,13 @@ class CFGBuilder:
             # Build CFG for the entire module body
             return self._build_from_body(tree.body, "module")
 
-    def _build_from_function(self, func_node: ast.FunctionDef) -> nx.DiGraph:
+    def _build_from_function(
+        self, func_node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> nx.DiGraph:
         """Build CFG from a function definition."""
         return self._build_from_body(func_node.body, func_node.name)
 
-    def _build_from_body(
-        self, body: list[ast.stmt], name: str
-    ) -> nx.DiGraph:
+    def _build_from_body(self, body: list[ast.stmt], name: str) -> nx.DiGraph:
         """
         Build CFG from a list of statements.
 
@@ -131,7 +131,11 @@ class CFGBuilder:
 
         # Add all blocks as nodes with their attributes
         for block in self._blocks.values():
-            if block.id in G.nodes or block.id == entry_block.id or block.id == exit_block.id:
+            if (
+                block.id in G.nodes
+                or block.id == entry_block.id
+                or block.id == exit_block.id
+            ):
                 G.add_node(
                     block.id,
                     block=block,
@@ -176,7 +180,12 @@ class CFGBuilder:
                 # Dead code — nothing flows here, but we still track it
                 dead_block = self._new_block("dead")
                 dead_block.add_statement(stmt)
-                G.add_node(dead_block.id, block=dead_block, label="dead", lineno=dead_block.lineno)
+                G.add_node(
+                    dead_block.id,
+                    block=dead_block,
+                    label="dead",
+                    lineno=dead_block.lineno,
+                )
                 continue
 
             # For branching statements, we need special handling
@@ -233,7 +242,9 @@ class CFGBuilder:
         if if_node.orelse:
             false_block = self._new_block("if_false")
             G.add_edge(cond_block.id, false_block.id, weight=0.5)
-            false_after = self._process_stmts(G, if_node.orelse, false_block, exit_block)
+            false_after = self._process_stmts(
+                G, if_node.orelse, false_block, exit_block
+            )
             result_blocks.extend(false_after)
         else:
             # No else — the condition block itself flows through
@@ -275,7 +286,9 @@ class CFGBuilder:
         if loop_node.orelse:
             else_block = self._new_block("loop_else")
             G.add_edge(header_block.id, else_block.id, weight=0.3)
-            else_after = self._process_stmts(G, loop_node.orelse, else_block, exit_block)
+            else_after = self._process_stmts(
+                G, loop_node.orelse, else_block, exit_block
+            )
             result_blocks.extend(else_after)
 
         result_blocks.append(after_loop)
@@ -301,12 +314,17 @@ class CFGBuilder:
 
         # Exception handlers
         for handler in try_node.handlers:
-            handler_block = self._new_block(
-                f"except_{handler.type.id if handler.type and isinstance(handler.type, ast.Name) else 'bare'}"
+            exc_type = (
+                handler.type.id
+                if handler.type and isinstance(handler.type, ast.Name)
+                else "bare"
             )
+            handler_block = self._new_block(f"except_{exc_type}")
             G.add_edge(try_block.id, handler_block.id, weight=2.0)
 
-            handler_after = self._process_stmts(G, handler.body, handler_block, exit_block)
+            handler_after = self._process_stmts(
+                G, handler.body, handler_block, exit_block
+            )
             result_blocks.extend(handler_after)
 
         # Else clause (runs if no exception)
@@ -325,7 +343,9 @@ class CFGBuilder:
             for blk in result_blocks:
                 G.add_edge(blk.id, finally_block.id, weight=1.0)
 
-            finally_after = self._process_stmts(G, try_node.finalbody, finally_block, exit_block)
+            finally_after = self._process_stmts(
+                G, try_node.finalbody, finally_block, exit_block
+            )
             return finally_after
 
         return result_blocks

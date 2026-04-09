@@ -10,7 +10,6 @@ Detects structural inefficiencies in Control Flow Graphs:
 
 from __future__ import annotations
 
-import ast
 from dataclasses import dataclass
 from typing import Optional
 
@@ -170,9 +169,7 @@ def detect_redundant_paths(cfg: nx.DiGraph) -> list[RedundantPath]:
                                 # Deduplicate — normalize path pair ordering
                                 key_a = tuple(path_a)
                                 key_b = tuple(path_b)
-                                pair_key = (
-                                    (min(key_a, key_b), max(key_a, key_b))
-                                )
+                                pair_key = (min(key_a, key_b), max(key_a, key_b))
                                 if pair_key in seen_pairs:
                                     continue
                                 seen_pairs.add(pair_key)
@@ -201,9 +198,7 @@ def detect_redundant_paths(cfg: nx.DiGraph) -> list[RedundantPath]:
     return redundant
 
 
-def detect_bottlenecks(
-    cfg: nx.DiGraph, threshold: float = 0.7
-) -> list[BottleneckNode]:
+def detect_bottlenecks(cfg: nx.DiGraph, threshold: float = 0.7) -> list[BottleneckNode]:
     """
     Detect bottleneck nodes with high betweenness centrality.
 
@@ -246,9 +241,7 @@ def detect_bottlenecks(
     return sorted(bottlenecks, key=lambda b: b.betweenness, reverse=True)
 
 
-def detect_deep_chains(
-    cfg: nx.DiGraph, max_depth: int = 8
-) -> list[DeepChain]:
+def detect_deep_chains(cfg: nx.DiGraph, max_depth: int = 8) -> list[DeepChain]:
     """
     Detect unnecessarily deep execution chains.
 
@@ -262,7 +255,7 @@ def detect_deep_chains(
     Returns:
         List of DeepChain objects.
     """
-    deep_chains = []
+    deep_chains: list[DeepChain] = []
     entry = _find_entry(cfg)
 
     if entry is None:
@@ -333,4 +326,3 @@ def _path_fingerprint(cfg: nx.DiGraph, path: list[int]) -> str:
         return ""
 
     return "|".join(parts)
-

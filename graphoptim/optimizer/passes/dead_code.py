@@ -9,13 +9,10 @@ and unreachable branches in the CFG.
 from __future__ import annotations
 
 import ast
-import copy
 from dataclasses import dataclass
 from typing import Optional
 
-import networkx as nx
-
-from graphoptim.analyzer.patterns import DeadNode, detect_dead_nodes
+from graphoptim.analyzer.patterns import detect_dead_nodes
 from graphoptim.parser.cfg_builder import build_cfg
 
 
@@ -44,7 +41,9 @@ class DeadCodePass:
     cost = 0.2  # Low risk — removing dead code is safe
     benefit = 0.0  # Set dynamically based on detection
 
-    def detect(self, source_code: str, func_name: Optional[str] = None) -> list[DeadCodeFinding]:
+    def detect(
+        self, source_code: str, func_name: Optional[str] = None
+    ) -> list[DeadCodeFinding]:
         """
         Find all dead code blocks in the source.
 
@@ -141,7 +140,7 @@ class _AfterTerminalDetector(ast.NodeVisitor):
         for i, stmt in enumerate(body):
             if isinstance(stmt, (ast.Return, ast.Raise, ast.Break, ast.Continue)):
                 # Everything after this in the same body is dead
-                for dead_stmt in body[i + 1:]:
+                for dead_stmt in body[i + 1 :]:
                     self.findings.append(
                         DeadCodeFinding(
                             line=getattr(dead_stmt, "lineno", None),
@@ -217,7 +216,9 @@ class _DeadCodeRemover(ast.NodeTransformer):
         node.body = self._clean_body(node.body)
         return node
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> ast.AsyncFunctionDef:
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef
+    ) -> ast.AsyncFunctionDef:
         node.body = self._clean_body(node.body)
         return node
 

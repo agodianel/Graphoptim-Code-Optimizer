@@ -88,10 +88,7 @@ def extract_cfg_metrics(
 
     # Dead node detection: nodes with in-degree=0 that are not the entry node
     entry_node = _find_entry_node(cfg)
-    dead_nodes = [
-        n for n in cfg.nodes
-        if cfg.in_degree(n) == 0 and n != entry_node
-    ]
+    dead_nodes = [n for n in cfg.nodes if cfg.in_degree(n) == 0 and n != entry_node]
 
     # Shortest / longest path (critical path)
     avg_path = _safe_avg_shortest_path(cfg)

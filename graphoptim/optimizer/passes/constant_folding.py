@@ -14,8 +14,7 @@ from __future__ import annotations
 import ast
 import operator
 from dataclasses import dataclass
-from typing import Optional
-
+from typing import Any, Callable, Optional
 
 # Safe binary operators for constant folding
 _SAFE_OPS = {
@@ -81,7 +80,7 @@ class ConstantFoldingPass:
         Returns:
             List of ConstantFoldingFinding objects.
         """
-        findings = []
+        findings: list[ConstantFoldingFinding] = []
 
         try:
             tree = ast.parse(source_code)
@@ -175,14 +174,14 @@ class _ConstantFolder(ast.NodeTransformer):
         self.generic_visit(node)
         result = _try_fold(node)
         if result is not None:
-            return ast.Constant(value=result)
+            return ast.Constant(value=result)  # type: ignore[arg-type]
         return node
 
     def visit_UnaryOp(self, node: ast.UnaryOp) -> ast.expr:
         self.generic_visit(node)
         result = _try_fold(node)
         if result is not None:
-            return ast.Constant(value=result)
+            return ast.Constant(value=result)  # type: ignore[arg-type]
         return node
 
 
@@ -202,7 +201,7 @@ def _try_fold(node: ast.expr) -> object | None:
         if left is None or right is None:
             return None
 
-        op_func = _SAFE_OPS.get(type(node.op))
+        op_func: Callable[..., Any] | None = _SAFE_OPS.get(type(node.op))
         if op_func is None:
             return None
 
@@ -232,12 +231,12 @@ def _try_fold(node: ast.expr) -> object | None:
         if operand is None:
             return None
 
-        op_func = _SAFE_UNARY_OPS.get(type(node.op))
-        if op_func is None:
+        unary_op_func: Any = _SAFE_UNARY_OPS.get(type(node.op))
+        if unary_op_func is None:
             return None
 
         try:
-            result = op_func(operand)
+            result = unary_op_func(operand)
         except (OverflowError, TypeError):
             return None
 

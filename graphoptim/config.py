@@ -54,9 +54,7 @@ class BenchmarkConfig:
 
     n_samples: int = 100
     dataset: str = "humaneval"  # "humaneval" or "mbpp"
-    models: list[str] = field(
-        default_factory=lambda: ["claude", "gpt4o", "gemini"]
-    )
+    models: list[str] = field(default_factory=lambda: ["claude", "gpt4o", "gemini"])
     output_dir: str = "benchmark_results"
 
     def validate(self) -> list[str]:

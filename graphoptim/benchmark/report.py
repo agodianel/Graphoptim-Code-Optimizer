@@ -8,7 +8,6 @@ human-written and LLM-generated code metrics.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -40,7 +39,7 @@ def generate_plots(
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    generated = []
+    generated: list[str] = []
 
     sns.set_theme(style="whitegrid", palette="muted")
 

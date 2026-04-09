@@ -1,10 +1,8 @@
 """Tests for CFG builder."""
 
-import ast
-
 import networkx as nx
 
-from graphoptim.parser.cfg_builder import CFGBuilder, build_cfg
+from graphoptim.parser.cfg_builder import build_cfg
 
 
 class TestCFGBuilder:

@@ -66,7 +66,9 @@ class KnapsackResult:
             lines.append("")
             lines.append("Rejected passes:")
             for p in self.rejected_passes:
-                lines.append(f"  ✗ {p.name} (cost={p.cost:.2f}, benefit={p.benefit:.2f})")
+                lines.append(
+                    f"  ✗ {p.name} (cost={p.cost:.2f}, benefit={p.benefit:.2f})"
+                )
 
         return "\n".join(lines)
 
@@ -219,8 +221,13 @@ class KnapsackSelector:
             changed = False
             for p in list(result):
                 for prereq_name in p.prerequisites:
-                    if prereq_name not in selected_names and prereq_name in viable_by_name:
-                        result.insert(0, viable_by_name[prereq_name])  # Prerequisites first
+                    if (
+                        prereq_name not in selected_names
+                        and prereq_name in viable_by_name
+                    ):
+                        result.insert(
+                            0, viable_by_name[prereq_name]
+                        )  # Prerequisites first
                         selected_names.add(prereq_name)
                         changed = True
 

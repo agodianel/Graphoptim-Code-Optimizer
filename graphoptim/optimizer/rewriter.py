@@ -8,17 +8,15 @@ comments, docstrings, and formatting as much as possible.
 from __future__ import annotations
 
 import ast
-import re
 from typing import Optional
 
-from graphoptim.optimizer.passes.dead_code import DeadCodePass
-from graphoptim.optimizer.passes.path_shortener import PathShortenerPass
 from graphoptim.optimizer.passes.centrality import CentralityPass
-from graphoptim.optimizer.passes.guard_clause import GuardClausePass
-from graphoptim.optimizer.passes.unused_variable import UnusedVariablePass
 from graphoptim.optimizer.passes.constant_folding import ConstantFoldingPass
+from graphoptim.optimizer.passes.dead_code import DeadCodePass
+from graphoptim.optimizer.passes.guard_clause import GuardClausePass
 from graphoptim.optimizer.passes.knapsack import KnapsackSelector, PassInfo
-
+from graphoptim.optimizer.passes.path_shortener import PathShortenerPass
+from graphoptim.optimizer.passes.unused_variable import UnusedVariablePass
 
 # Registry of available passes
 PASS_REGISTRY: dict[str, type] = {
@@ -99,9 +97,7 @@ def optimize_source(
     return optimized
 
 
-def _select_passes_auto(
-    source_code: str, budget: Optional[dict] = None
-) -> list:
+def _select_passes_auto(source_code: str, budget: Optional[dict] = None) -> list:
     """Automatically select passes using knapsack."""
     budget_value = 0.6
     if budget and "max_changes" in budget:

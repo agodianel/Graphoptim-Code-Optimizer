@@ -38,9 +38,7 @@ class TestCLI:
     def test_analyze_file(self, tmp_path):
         """Analyzing a real file should work."""
         test_file = tmp_path / "test.py"
-        test_file.write_text(
-            "def foo(x):\n    return x + 1\n", encoding="utf-8"
-        )
+        test_file.write_text("def foo(x):\n    return x + 1\n", encoding="utf-8")
 
         runner = CliRunner()
         result = runner.invoke(main, ["analyze", str(test_file)])
@@ -49,14 +47,10 @@ class TestCLI:
     def test_analyze_json_output(self, tmp_path):
         """JSON output format should work."""
         test_file = tmp_path / "test.py"
-        test_file.write_text(
-            "def foo(x):\n    return x + 1\n", encoding="utf-8"
-        )
+        test_file.write_text("def foo(x):\n    return x + 1\n", encoding="utf-8")
 
         runner = CliRunner()
-        result = runner.invoke(
-            main, ["analyze", str(test_file), "--format", "json"]
-        )
+        result = runner.invoke(main, ["analyze", str(test_file), "--format", "json"])
         assert result.exit_code == 0
 
     def test_analyze_nonexistent(self):
@@ -74,9 +68,7 @@ class TestCLI:
     def test_optimize_dry_run(self, tmp_path):
         """Dry run optimization should print output."""
         test_file = tmp_path / "test.py"
-        test_file.write_text(
-            "def foo(x):\n    return x\n    y = 1\n", encoding="utf-8"
-        )
+        test_file.write_text("def foo(x):\n    return x\n    y = 1\n", encoding="utf-8")
 
         runner = CliRunner()
         result = runner.invoke(main, ["optimize", str(test_file)])

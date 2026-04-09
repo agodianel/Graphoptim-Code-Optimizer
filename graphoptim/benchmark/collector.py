@@ -12,14 +12,12 @@ from __future__ import annotations
 
 import ast
 import json
-import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 from graphoptim.config import BenchmarkConfig
-
 
 # Standard prompt for all models — identical as spec requires
 SOLUTION_PROMPT = (
@@ -53,9 +51,9 @@ class DatasetCollector:
 
     def __init__(self, config: BenchmarkConfig) -> None:
         self.config = config
-        self._anthropic_client = None
-        self._openai_client = None
-        self._google_model = None
+        self._anthropic_client: Any = None
+        self._openai_client: Any = None
+        self._google_model: Any = None
 
     def collect(self) -> list[BenchmarkProblem]:
         """
@@ -105,13 +103,9 @@ class DatasetCollector:
                     if self.config.dataset == "realworld":
                         # For real-world: use the prompt directly (it's already
                         # a complete task description, no wrapping needed)
-                        solution = self._generate_solution_raw(
-                            model, problem.prompt
-                        )
+                        solution = self._generate_solution_raw(model, problem.prompt)
                     else:
-                        solution = self._generate_solution(
-                            model, problem.prompt
-                        )
+                        solution = self._generate_solution(model, problem.prompt)
                     problem.llm_solutions[model] = solution
                     time.sleep(0.5)  # Rate limiting
                 except Exception as e:
@@ -149,7 +143,8 @@ class DatasetCollector:
 
                 # Count top-level function definitions
                 func_count = sum(
-                    1 for node in ast.iter_child_nodes(tree)
+                    1
+                    for node in ast.iter_child_nodes(tree)
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
                 )
 
@@ -160,7 +155,8 @@ class DatasetCollector:
                 try:
                     tree = ast.parse(solution)
                     func_count = sum(
-                        1 for node in ast.iter_child_nodes(tree)
+                        1
+                        for node in ast.iter_child_nodes(tree)
                         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
                     )
                     if func_count == 1:
@@ -229,7 +225,7 @@ class DatasetCollector:
 
     def _load_from_jsonl(self, filepath: str) -> list[BenchmarkProblem]:
         """Load problems from a JSONL file (works for both HumanEval & MBPP)."""
-        problems = []
+        problems: list[BenchmarkProblem] = []
         path = Path(filepath)
         if not path.exists():
             return problems
@@ -269,9 +265,7 @@ class DatasetCollector:
         These are complex, multi-function tasks designed to trigger
         structural inefficiencies in LLM-generated code.
         """
-        prompts_path = (
-            Path(__file__).resolve().parent / "prompts" / "realworld.json"
-        )
+        prompts_path = Path(__file__).resolve().parent / "prompts" / "realworld.json"
         if not prompts_path.exists():
             print(f"  ⚠ Real-world prompts not found at {prompts_path}")
             return []
@@ -344,9 +338,7 @@ class DatasetCollector:
         if self._openai_client is None:
             import openai
 
-            self._openai_client = openai.OpenAI(
-                api_key=self.config.openai_api_key
-            )
+            self._openai_client = openai.OpenAI(api_key=self.config.openai_api_key)
 
         response = self._openai_client.chat.completions.create(
             model="gpt-4.1",
@@ -360,9 +352,7 @@ class DatasetCollector:
         if self._google_model is None:
             from google import genai
 
-            self._google_model = genai.Client(
-                api_key=self.config.google_api_key
-            )
+            self._google_model = genai.Client(api_key=self.config.google_api_key)
 
         response = self._google_model.models.generate_content(
             model="gemini-2.5-pro",
@@ -370,9 +360,7 @@ class DatasetCollector:
         )
         return response.text
 
-    def save_dataset(
-        self, problems: list[BenchmarkProblem], output_path: str
-    ) -> None:
+    def save_dataset(self, problems: list[BenchmarkProblem], output_path: str) -> None:
         """Save collected dataset to structured JSON."""
         data = []
         for p in problems:

@@ -40,9 +40,7 @@ def main() -> None:
 @main.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
-@click.option(
-    "--output", "-o", type=click.Path(), help="Output report to file"
-)
+@click.option("--output", "-o", type=click.Path(), help="Output report to file")
 @click.option(
     "--format",
     "output_format",
@@ -141,9 +139,7 @@ def _analyze_directory(
         return
 
     if output_format == "json":
-        result = json.dumps(
-            [r.to_dict() for r in reports], indent=2
-        )
+        result = json.dumps([r.to_dict() for r in reports], indent=2)
         if output:
             Path(output).write_text(result, encoding="utf-8")
         else:
@@ -153,9 +149,7 @@ def _analyze_directory(
     # Summary table
     total_functions = sum(len(r.functions) for r in reports)
     avg_score = (
-        round(sum(r.total_score for r in reports) / len(reports))
-        if reports
-        else 0
+        round(sum(r.total_score for r in reports) / len(reports)) if reports else 0
     )
 
     console.print()
@@ -197,9 +191,7 @@ def _print_file_report(report, verbose: bool) -> None:
     header.append(report.filepath, style="bold cyan")
     console.print(Panel(header, border_style="cyan"))
 
-    console.print(
-        f"  Functions analyzed: [bold]{len(report.functions)}[/bold]"
-    )
+    console.print(f"  Functions analyzed: [bold]{len(report.functions)}[/bold]")
     console.print(
         f"  Total optimization score: "
         f"[bold {score_style}]{score}/100[/bold {score_style}] {icon}"
@@ -225,13 +217,9 @@ def _print_file_report(report, verbose: bool) -> None:
 
         cc = func.metrics.cyclomatic_complexity
         if cc > 7:
-            tree.add(
-                f"Cyclomatic complexity: [red]{cc}[/red]   (threshold: 7)"
-            )
+            tree.add(f"Cyclomatic complexity: [red]{cc}[/red]   (threshold: 7)")
         elif verbose:
-            tree.add(
-                f"Cyclomatic complexity: [green]{cc}[/green]"
-            )
+            tree.add(f"Cyclomatic complexity: [green]{cc}[/green]")
 
         if func.dead_nodes:
             dead_lines = [str(d.line) for d in func.dead_nodes if d.line]
@@ -362,9 +350,7 @@ def optimize(
                     f"[green]{after.total_score}/100[/green]"
                 )
             elif show_diff and source.strip() == result.strip():
-                console.print(
-                    "\n[dim]No changes — code is already optimal.[/dim]"
-                )
+                console.print("\n[dim]No changes — code is already optimal.[/dim]")
 
         except Exception as e:
             console.print(f"[red]Error optimizing {target}: {e}[/red]")
@@ -372,7 +358,9 @@ def optimize(
 
     elif target.is_dir():
         if show_diff or output or inplace:
-            _optimize_directory(target, show_diff, inplace, output, pass_list, budget_dict)
+            _optimize_directory(
+                target, show_diff, inplace, output, pass_list, budget_dict
+            )
         else:
             console.print(
                 "[yellow]Specify --diff, --output DIR, or --inplace "
@@ -402,14 +390,20 @@ def _optimize_directory(
                 passes=pass_list,
                 budget=budget_dict,
             )
-        console.print(
-            f"[green]✓ Optimized {count} files → {output}[/green]"
-        )
+        console.print(f"[green]✓ Optimized {count} files → {output}[/green]")
         return
 
     # Diff or inplace mode — process file by file
-    exclude = ["__pycache__", ".venv", "venv", ".git", "node_modules",
-               ".egg-info", "dist", "build"]
+    exclude = [
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".git",
+        "node_modules",
+        ".egg-info",
+        "dist",
+        "build",
+    ]
     files_changed = 0
 
     for py_file in sorted(dirpath.rglob("*.py")):
@@ -426,6 +420,7 @@ def _optimize_directory(
                     _print_diff(source, result, str(py_file))
                 if inplace:
                     import shutil
+
                     backup = py_file.with_suffix(py_file.suffix + ".bak")
                     shutil.copy2(py_file, backup)
                     py_file.write_text(result, encoding="utf-8")
@@ -476,7 +471,6 @@ def _print_diff(original: str, optimized: str, filepath: str) -> None:
             console.print(f"[red]{line}[/red]")
         else:
             console.print(f"[dim]{line}[/dim]")
-
 
 
 @main.command()
@@ -612,8 +606,8 @@ def config(action: str, key: Optional[str], value: Optional[str]) -> None:
             )
         else:
             console.print(
-                f"[yellow]Runtime configuration is not persisted. "
-                f"Use environment variables or pass options to commands.[/yellow]"
+                "[yellow]Runtime configuration is not persisted. "
+                "Use environment variables or pass options to commands.[/yellow]"
             )
 
 

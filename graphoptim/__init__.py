@@ -32,17 +32,19 @@ from __future__ import annotations
 __version__ = "0.1.0"
 __author__ = "GraphOptim Contributors"
 
-import os
 import shutil
 from pathlib import Path
 from typing import Optional
 
 from graphoptim.analyzer.reporter import (
     FileReport,
-    FunctionReport,
     analyze_source,
 )
-from graphoptim.config import AnalyzeConfig, OptimizeConfig
+from graphoptim.analyzer.reporter import (
+    FunctionReport as FunctionReport,
+)
+from graphoptim.config import AnalyzeConfig
+from graphoptim.config import OptimizeConfig as OptimizeConfig
 from graphoptim.optimizer.rewriter import optimize_source
 
 
@@ -206,8 +208,14 @@ def analyze_project(
         raise NotADirectoryError(f"Not a directory: {directory}")
 
     exclude_patterns = exclude or [
-        "__pycache__", ".venv", "venv", ".git", "node_modules",
-        "*.egg-info", "dist", "build",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".git",
+        "node_modules",
+        "*.egg-info",
+        "dist",
+        "build",
     ]
 
     reports = []
@@ -259,10 +267,7 @@ def optimize_project(
 
     count = 0
     for py_file in dir_path.rglob("*.py"):
-        if any(
-            x in str(py_file)
-            for x in ["__pycache__", ".venv", "venv", ".git"]
-        ):
+        if any(x in str(py_file) for x in ["__pycache__", ".venv", "venv", ".git"]):
             continue
 
         try:

@@ -57,7 +57,7 @@ class GuardClausePass:
         Returns:
             List of GuardClauseFinding objects.
         """
-        findings = []
+        findings: list[GuardClauseFinding] = []
 
         try:
             tree = ast.parse(source_code)
@@ -132,8 +132,10 @@ class GuardClausePass:
 
         # Skip docstring
         stmts = body
-        if stmts and isinstance(stmts[0], ast.Expr) and isinstance(
-            stmts[0].value, (ast.Constant,)
+        if (
+            stmts
+            and isinstance(stmts[0], ast.Expr)
+            and isinstance(stmts[0].value, (ast.Constant,))
         ):
             stmts = stmts[1:]
 
@@ -217,11 +219,13 @@ class _GuardClauseTransformer(ast.NodeTransformer):
     def _transform_body(self, body: list[ast.stmt]) -> list[ast.stmt]:
         """Transform a function body by extracting guard clauses."""
         # Preserve docstring
-        result = []
+        result: list[ast.stmt] = []
         stmts = list(body)
 
-        if stmts and isinstance(stmts[0], ast.Expr) and isinstance(
-            stmts[0].value, (ast.Constant,)
+        if (
+            stmts
+            and isinstance(stmts[0], ast.Expr)
+            and isinstance(stmts[0].value, (ast.Constant,))
         ):
             result.append(stmts[0])
             stmts = stmts[1:]
@@ -230,11 +234,7 @@ class _GuardClauseTransformer(ast.NodeTransformer):
         changed = True
         while changed:
             changed = False
-            if (
-                len(stmts) == 1
-                and isinstance(stmts[0], ast.If)
-                and not stmts[0].orelse
-            ):
+            if len(stmts) == 1 and isinstance(stmts[0], ast.If) and not stmts[0].orelse:
                 # Pattern: if cond: <entire body>
                 # → if not cond: return None; <body>
                 if_node = stmts[0]

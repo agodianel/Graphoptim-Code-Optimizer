@@ -11,9 +11,7 @@ import ast
 from dataclasses import dataclass
 from typing import Optional
 
-import networkx as nx
-
-from graphoptim.analyzer.patterns import RedundantPath, detect_redundant_paths
+from graphoptim.analyzer.patterns import detect_redundant_paths
 from graphoptim.parser.ast_utils import ast_node_hash
 from graphoptim.parser.cfg_builder import build_cfg
 
@@ -113,9 +111,7 @@ class PathShortenerPass:
         except Exception:
             return source_code
 
-    def _detect_duplicate_branches(
-        self, tree: ast.Module
-    ) -> list[PathMergerFinding]:
+    def _detect_duplicate_branches(self, tree: ast.Module) -> list[PathMergerFinding]:
         """Detect if/else blocks where both branches do the same thing."""
         findings = []
 
@@ -129,9 +125,11 @@ class PathShortenerPass:
                     findings.append(
                         PathMergerFinding(
                             line_a=node.lineno,
-                            line_b=getattr(
-                                node.orelse[0], "lineno", None
-                            ) if node.orelse else None,
+                            line_b=(
+                                getattr(node.orelse[0], "lineno", None)
+                                if node.orelse
+                                else None
+                            ),
                             description=(
                                 f"if/else at line {node.lineno} has "
                                 f"identical branches"

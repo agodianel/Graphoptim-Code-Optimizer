@@ -20,7 +20,7 @@ class FunctionInfo:
 
     name: str
     source: str
-    ast_node: ast.FunctionDef
+    ast_node: ast.FunctionDef | ast.AsyncFunctionDef
     lineno: int
     end_lineno: Optional[int]
     decorators: list[ast.expr] = field(default_factory=list)
@@ -143,7 +143,11 @@ def _ast_fingerprint(node: ast.AST) -> str:
             ):
                 parts.append(f"{field_name}=<const>")
             elif isinstance(value, list):
-                child_parts = [_ast_fingerprint(child) for child in value if isinstance(child, ast.AST)]
+                child_parts = [
+                    _ast_fingerprint(child)
+                    for child in value
+                    if isinstance(child, ast.AST)
+                ]
                 parts.append(f"{field_name}=[{','.join(child_parts)}]")
             elif isinstance(value, ast.AST):
                 parts.append(f"{field_name}={_ast_fingerprint(value)}")
@@ -168,8 +172,17 @@ def get_operation_weight(node: ast.AST) -> float:
     if isinstance(node, ast.Call):
         if isinstance(node.func, ast.Attribute):
             attr = node.func.attr
-            if attr in ("read", "write", "open", "close", "send", "recv",
-                        "readline", "readlines", "writelines"):
+            if attr in (
+                "read",
+                "write",
+                "open",
+                "close",
+                "send",
+                "recv",
+                "readline",
+                "readlines",
+                "writelines",
+            ):
                 return 8.0
             if attr in ("get", "post", "put", "delete", "request"):
                 return 10.0
